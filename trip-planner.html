@@ -635,7 +635,7 @@ window.selectPlace = function(id) {
   var place=(TRIP.places||[]).find(p=>p.id===id);
   if(!place)return;
   var cfg=TYPE_CONFIG[place.type]||{color:'#aaa',emoji:'📍',label:'Place'};
-  (TRIP.places||[]).forEach(p=>{markers[p.id].setIcon(makeIcon(p.type,p.id===id));markers[p.id].setZIndex(p.id===id?999:p.type==='hotel'?100:1);});
+  if(!activeDay)(TRIP.places||[]).forEach(p=>{markers[p.id].setIcon(makeIcon(p.type,p.id===id));markers[p.id].setZIndex(p.id===id?999:p.type==='hotel'?100:1);});
   renderList();
   var li=document.getElementById('li-'+id);
   if(li)li.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -654,7 +654,7 @@ window.selectPlace = function(id) {
 window.closePopup = function() {
   document.getElementById('detail-popup').classList.remove('show');
   activePlace=null;
-  if(TRIP)(TRIP.places||[]).forEach(p=>{markers[p.id].setIcon(makeIcon(p.type,false));markers[p.id].setZIndex(p.type==='hotel'?100:1);});
+  if(TRIP&&!activeDay)(TRIP.places||[]).forEach(p=>{markers[p.id].setIcon(makeIcon(p.type,false));markers[p.id].setZIndex(p.type==='hotel'?100:1);});
   renderList();
 };
 
