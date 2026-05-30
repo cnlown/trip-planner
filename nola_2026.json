@@ -1,0 +1,211 @@
+{
+  "trip": {
+    "title": "New Orleans, December 2026",
+    "emoji": "🎷",
+    "travelers": "Chad & Brooke Lown",
+    "dates": "Dec 26–31, 2026",
+    "header_subtitle": "December 26–30, 2026 · Le Méridien, CBD"
+  },
+
+  "flights": [
+    {
+      "airline": "United Airlines",
+      "confirmation": "LMILMM",
+      "checkin_url": "united.com",
+      "legs": [
+        { "day": "Saturday, December 26 — Outbound", "flight": "United 1796",  "from": "ROC", "to": "EWR", "departs": "6:40 AM",  "arrives": "7:57 AM"  },
+        { "day": "",                                  "flight": "United 1527",  "from": "EWR", "to": "MSY", "departs": "9:45 AM",  "arrives": "12:10 PM" },
+        { "day": "Thursday, December 31 — Return",   "flight": "United 2844",  "from": "MSY", "to": "ORD", "departs": "7:00 AM",  "arrives": "9:45 AM"  },
+        { "day": "",                                  "flight": "SkyWest 5335", "from": "ORD", "to": "ROC", "departs": "10:35 AM", "arrives": "1:28 PM"  }
+      ],
+      "notes": [
+        { "label": "Check In",   "value": "united.com", "conf": "LMILMM" },
+        { "label": "Dec 31 Note","value": "Wake up 4:00–4:30 AM · Leave hotel by 5:00 AM", "warn": true }
+      ]
+    }
+  ],
+
+  "hotel": {
+    "name": "Le Méridien New Orleans",
+    "address": "333 Poydras Street, New Orleans, LA",
+    "phone": "(504) 525-9444",
+    "confirmation": "255-14453543",
+    "checkin": "Saturday, December 26 at 4:00 PM",
+    "checkout": "Thursday, December 31 at 11:00 AM",
+    "room": "Classic, Double Two Queen Beds · 2 adults",
+    "note": "Must leave hotel by 4:30–5:00 AM for 7:00 AM flight"
+  },
+
+  "payment": {
+    "vendor": "JetBlue Vacations",
+    "total": "$2,544.22",
+    "remaining": "$2,296.22",
+    "due_date": "November 26, 2026",
+    "warning": "Must be paid manually at JetBlue Vacations. Booking will be CANCELLED and deposit forfeited if not paid on time. Calendar reminders set for 1 week and 1 day before."
+  },
+
+  "reservations": [],
+
+  "places": [
+    {
+      "id": 1,
+      "name": "Le Méridien New Orleans",
+      "type": "hotel",
+      "lat": 29.9490896, "lng": -90.0667143,
+      "address": "333 Poydras St, CBD",
+      "notes": "Your home base! Check-in Dec 26 at 4PM. Must leave by 5AM on Dec 31 for flight. Confirmation: 255-14453543. Walking distance to French Quarter and Superdome.",
+      "rating": 4.0,
+      "must": true
+    },
+    {
+      "id": 2,
+      "name": "Café Du Monde",
+      "type": "restaurant",
+      "lat": 29.9576044, "lng": -90.0617687,
+      "address": "800 Decatur St, French Quarter",
+      "notes": "MUST EAT — Iconic beignets and café au lait. Open late — hits different at midnight covered in powdered sugar. Never closes. Right on Jackson Square.",
+      "rating": 4.5,
+      "must": true
+    },
+    {
+      "id": 3,
+      "name": "Willie Mae's Scotch House",
+      "type": "restaurant",
+      "lat": 29.9705047, "lng": -90.0646157,
+      "address": "2401 St Ann St, Tremé",
+      "notes": "MUST EAT — James Beard Award-winning fried chicken. Seasoned to the bone. Go when they open — fills up fast. Also get red beans and rice.",
+      "rating": 4.5,
+      "must": true
+    },
+    {
+      "id": 4,
+      "name": "Galatoire's",
+      "type": "restaurant",
+      "lat": 29.9549816, "lng": -90.0689696,
+      "address": "209 Bourbon St, French Quarter",
+      "notes": "MUST EAT — Trout meunière amandine, crab Maison. Jacket required after 5PM (they'll lend you one). Downstairs is first-come, first-served — no reservations needed.",
+      "rating": 4.5,
+      "must": true
+    },
+    {
+      "id": 5,
+      "name": "Pat O'Brien's",
+      "type": "bar",
+      "lat": 29.9582008, "lng": -90.0652973,
+      "address": "718 St Peter St, French Quarter",
+      "notes": "MUST DO — Home of the Hurricane cocktail. Stunning flaming fountain courtyard. Dueling pianos at night. Closed Tuesdays — plan accordingly!",
+      "rating": 4.5,
+      "must": true
+    },
+    {
+      "id": 6,
+      "name": "Tropical Isle",
+      "type": "bar",
+      "lat": 29.9579012, "lng": -90.0660418,
+      "address": "610 Bourbon St, French Quarter",
+      "notes": "MUST DO — Home of the original Hand Grenade cocktail. Grab one to-go in a green cup and walk Bourbon Street. Live music, great people watching.",
+      "rating": 4.5,
+      "must": true
+    },
+    {
+      "id": 7,
+      "name": "Hot Tin — Pontchartrain Hotel",
+      "type": "rooftop",
+      "lat": 29.934992, "lng": -90.0796649,
+      "address": "2031 St Charles Ave, Garden District",
+      "notes": "MUST DO — 270° panoramic views of the skyline and Mississippi River. 1940s artist loft aesthetic, dark and intimate. Ride the St. Charles streetcar ($1.25) to get there.",
+      "rating": 4.4,
+      "must": true
+    },
+    {
+      "id": 8,
+      "name": "Above the Grid — NOPSI Hotel",
+      "type": "rooftop",
+      "lat": 29.9520488, "lng": -90.07265,
+      "address": "317 Baronne St, CBD",
+      "notes": "MUST DO — Rooftop bar very close to your hotel. Pool vibes, great city views. Boudin balls and wings available. Great for a casual pre-dinner drink.",
+      "rating": 4.4,
+      "must": true
+    },
+    {
+      "id": 9,
+      "name": "Observatory Eleven",
+      "type": "rooftop",
+      "lat": 29.951362, "lng": -90.0646773,
+      "address": "100 Iberville St, CBD",
+      "notes": "MUST DO — Rooftop bar with stunning Mississippi River views. Very romantic. Perfect pre-anniversary dinner spot on Dec 29. Stiff drinks, excellent service.",
+      "rating": 4.2,
+      "must": true
+    },
+    {
+      "id": 10,
+      "name": "Rosie's on the Roof — Higgins Hotel",
+      "type": "rooftop",
+      "lat": 29.9425708, "lng": -90.0697495,
+      "address": "1000 Magazine St, Warehouse District",
+      "notes": "MUST DO — Retro vibes, rooftop views, live music. Right next to the WWII Museum — perfect afternoon combo. Opens at 4PM daily. Try the crawfish beignets!",
+      "rating": 4.6,
+      "must": true
+    },
+    {
+      "id": 11,
+      "name": "Jackson Square",
+      "type": "activity",
+      "lat": 29.9574024, "lng": -90.0629495,
+      "address": "French Quarter",
+      "notes": "Heart of the French Quarter. Street performers, artists, St. Louis Cathedral backdrop. Best at sunrise or just before sunset. Free to visit.",
+      "rating": 4.7,
+      "must": false
+    },
+    {
+      "id": 12,
+      "name": "Preservation Hall",
+      "type": "activity",
+      "lat": 29.9582893, "lng": -90.0653897,
+      "address": "726 St Peter St, French Quarter",
+      "notes": "Book tickets at preservationhall.com — sells out especially around New Year's! Legendary tiny jazz venue. 45-min sets nightly. No photos during show.",
+      "rating": 4.7,
+      "must": false
+    },
+    {
+      "id": 13,
+      "name": "Steamboat Natchez",
+      "type": "activity",
+      "lat": 29.9552704, "lng": -90.0627252,
+      "address": "400 Toulouse St Wharf, French Quarter",
+      "notes": "MUST DO — Dinner jazz cruise on the Mississippi River. Book in advance. Gumbo, prime rib, live jazz on the top deck. Bloody Marys are excellent.",
+      "rating": 4.4,
+      "must": true
+    },
+    {
+      "id": 14,
+      "name": "National WWII Museum",
+      "type": "activity",
+      "lat": 29.9430711, "lng": -90.0705317,
+      "address": "945 Magazine St, Warehouse District",
+      "notes": "4.8 stars — one of the best museums in the US. Plan 3-4 hours minimum (7 buildings!). Keep your receipt to return within 7 days. Pairs perfectly with Rosie's on the Roof next door.",
+      "rating": 4.8,
+      "must": false
+    },
+    {
+      "id": 15,
+      "name": "Caesars Superdome — Saints Game",
+      "type": "activity",
+      "lat": 29.9511442, "lng": -90.0810909,
+      "address": "1500 Sugar Bowl Dr, CBD",
+      "notes": "MUST DO — Saints home game! Only a 15-min walk from your hotel. Food inside is great — jambalaya, gator sausage, cajun Philly. Saints fans are legendary.",
+      "rating": 4.6,
+      "must": true
+    },
+    {
+      "id": 16,
+      "name": "Royal Street Shopping",
+      "type": "shopping",
+      "lat": 29.9546727, "lng": -90.0680313,
+      "address": "Royal St, French Quarter",
+      "notes": "25+ antique shops and art galleries. Highlights: M.S. Rau (rare antiques and jewelry), Lucullus (culinary antiques), Keil's Antiques (est. 1899). Best visited early morning before crowds.",
+      "rating": 4.4,
+      "must": false
+    }
+  ]
+}
