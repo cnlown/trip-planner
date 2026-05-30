@@ -81,8 +81,9 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .itin-name { font-size:11.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ts-badge { display:inline-flex; align-items:center; font-size:9px; padding:1px 6px; border-radius:8px; border:1px solid var(--border); color:var(--muted); cursor:pointer; margin-top:2px; transition:all 0.12s; white-space:nowrap; }
 .ts-badge:hover { border-color:var(--muted); color:var(--text); }
-.itin-remove { background:transparent; border:none; color:var(--border); font-size:12px; cursor:pointer; flex-shrink:0; padding:2px 4px; border-radius:4px; transition:all 0.12s; }
-.itin-remove:hover { color:#e85c4a; background:rgba(232,92,74,0.1); }
+.itin-remove { background:transparent; border:none; color:var(--muted); font-size:13px; cursor:pointer; flex-shrink:0; padding:2px 6px; border-radius:4px; transition:all 0.12s; opacity:0.5; }
+.itin-item:hover .itin-remove { opacity:1; }
+.itin-remove:hover { color:#e85c4a; background:rgba(232,92,74,0.12); opacity:1; }
 .day-empty { padding:10px 8px; font-size:11px; color:var(--muted); font-style:italic; text-align:center; }
 .ts-picker { position:fixed; z-index:3000; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; box-shadow:0 8px 30px rgba(0,0,0,0.6); min-width:165px; }
 .ts-option { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px; color:var(--text); transition:background 0.1s; }
