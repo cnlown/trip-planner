@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Upload Trip to Firestore</title>
+<style>
+body { font-family: monospace; background: #0f0e0c; color: #f0ead8; padding: 40px; max-width: 600px; margin: 0 auto; }
+h1 { color: #e8b84b; margin-bottom: 8px; }
+p { color: #8a7f6a; margin-bottom: 24px; font-size: 13px; }
+button { padding: 12px 28px; background: #e8b84b; color: #0f0e0c; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+button:hover { background: #d4a53a; }
+button:disabled { background: #444; color: #888; cursor: not-allowed; }
+#log { margin-top: 24px; background: #1a1814; border: 1px solid #2e2b25; border-radius: 8px; padding: 16px; font-size: 12px; line-height: 1.8; min-height: 80px; white-space: pre-wrap; }
+.ok { color: #5ce87a; }
+.err { color: #e85c4a; }
+.info { color: #5cb8e8; }
+</style>
+</head>
+<body>
+<h1>🗺️ Firestore Trip Uploader</h1>
+<p>One-time tool to upload nola_2026 trip data to Firestore.<br>Sign in with your Google account first, then click Upload.</p>
+<button id="sign-in-btn" onclick="doSignIn()">Sign in with Google</button>
+<button id="upload-btn" onclick="doUpload()" disabled style="margin-left:12px">Upload NOLA Trip</button>
+<button id="test-btn" onclick="doUploadTest()" disabled style="margin-left:12px;background:#5cb8e8">Upload Test Trip</button>
+<button id="sync-btn" onclick="doSyncNola()" disabled style="margin-left:12px;background:#5ce87a;margin-top:12px;display:block">Sync NOLA Places (add missing)</button>
+<div id="log">Waiting...</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBkuYcZWb36RJVWI0pl13wJuC3yflCFjEY",
+  authDomain: "trip-planner-59596.firebaseapp.com",
+  projectId: "trip-planner-59596",
+  storageBucket: "trip-planner-59596.firebasestorage.app",
+  messagingSenderId: "871104419538",
+  appId: "1:871104419538:web:cce58cfcde561d6e783f0b"
+};
+
+const NOLA_DATA = {
+  title: "New Orleans, December 2026",
+  emoji: "🎷",
+  travelers: "Chad & Brooke Lown",
+  dates: "Dec 26–31, 2026",
+  header_subtitle: "December 26–30, 2026 · Le Méridien, CBD",
+
+  flights: [
+    {
+      airline: "United Airlines",
+      confirmation: "LMILMM",
+      checkin_url: "united.com",
+      legs: [
+        { day: "Saturday, December 26 — Outbound", flight: "United 1796",  from: "ROC", to: "EWR", departs: "6:40 AM",  arrives: "7:57 AM"  },
+        { day: "",                                  flight: "United 1527",  from: "EWR", to: "MSY", departs: "9:45 AM",  arrives: "12:10 PM" },
+        { day: "Thursday, December 31 — Return",   flight: "United 2844",  from: "MSY", to: "ORD", departs: "7:00 AM",  arrives: "9:45 AM"  },
+        { day: "",                                  flight: "SkyWest 5335", from: "ORD", to: "ROC", departs: "10:35 AM", arrives: "1:28 PM"  }
+      ],
+      notes: [
+        { label: "Check In",    value: "united.com", conf: "LMILMM" },
+        { label: "Dec 31 Note", value: "Wake up 4:00–4:30 AM · Leave hotel by 5:00 AM", warn: true }
+      ]
+    }
+  ],
+
+  hotel: {
+    name: "Le Méridien New Orleans",
+    address: "333 Poydras Street, New Orleans, LA",
+    phone: "(504) 525-9444",
+    confirmation: "255-14453543",
+    checkin: "Saturday, December 26 at 4:00 PM",
+    checkout: "Thursday, December 31 at 11:00 AM",
+    room: "Classic, Double Two Queen Beds · 2 adults",
+    note: "Must leave hotel by 4:30–5:00 AM for 7:00 AM flight"
+  },
+
+  payment: {
+    vendor: "JetBlue Vacations",
+    total: "$2,544.22",
+    remaining: "$2,296.22",
+    due_date: "November 26, 2026",
+    warning: "Must be paid manually at JetBlue Vacations. Booking will be CANCELLED and deposit forfeited if not paid on time. Calendar reminders set for 1 week and 1 day before."
+  },
+
+  reservations: [],
+
+  places: [
+    { id:1,  name:"Le Méridien New Orleans",          type:"hotel",      lat:29.9490896, lng:-90.0667143, address:"333 Poydras St, CBD",              notes:"Your home base! Check-in Dec 26 at 4PM. Must leave by 5AM on Dec 31 for flight. Confirmation: 255-14453543. Walking distance to French Quarter and Superdome.", rating:4.0, must:true  },
+    { id:2,  name:"Café Du Monde",                     type:"restaurant", lat:29.9576044, lng:-90.0617687, address:"800 Decatur St, French Quarter",    notes:"MUST EAT — Iconic beignets and café au lait. Open late — hits different at midnight covered in powdered sugar. Never closes. Right on Jackson Square.", rating:4.5, must:true  },
+    { id:3,  name:"Willie Mae's Scotch House",         type:"restaurant", lat:29.9705047, lng:-90.0646157, address:"2401 St Ann St, Tremé",             notes:"MUST EAT — James Beard Award-winning fried chicken. Seasoned to the bone. Go when they open — fills up fast. Also get red beans and rice.", rating:4.5, must:true  },
+    { id:4,  name:"Galatoire's",                       type:"restaurant", lat:29.9549816, lng:-90.0689696, address:"209 Bourbon St, French Quarter",    notes:"MUST EAT — Trout meunière amandine, crab Maison. Jacket required after 5PM (they'll lend you one). Downstairs is first-come, first-served — no reservations needed.", rating:4.5, must:true  },
+    { id:5,  name:"Pat O'Brien's",                     type:"bar",        lat:29.9582008, lng:-90.0652973, address:"718 St Peter St, French Quarter",   notes:"MUST DO — Home of the Hurricane cocktail. Stunning flaming fountain courtyard. Dueling pianos at night. Closed Tuesdays — plan accordingly!", rating:4.5, must:true  },
+    { id:6,  name:"Tropical Isle",                     type:"bar",        lat:29.9579012, lng:-90.0660418, address:"610 Bourbon St, French Quarter",    notes:"MUST DO — Home of the original Hand Grenade cocktail. Grab one to-go in a green cup and walk Bourbon Street. Live music, great people watching.", rating:4.5, must:true  },
+    { id:7,  name:"Hot Tin — Pontchartrain Hotel",     type:"rooftop",    lat:29.934992,  lng:-90.0796649, address:"2031 St Charles Ave, Garden District", notes:"MUST DO — 270° panoramic views of the skyline and Mississippi River. 1940s artist loft aesthetic, dark and intimate. Ride the St. Charles streetcar ($1.25) to get there.", rating:4.4, must:true  },
+    { id:8,  name:"Above the Grid — NOPSI Hotel",     type:"rooftop",    lat:29.9520488, lng:-90.07265,   address:"317 Baronne St, CBD",               notes:"MUST DO — Rooftop bar very close to your hotel. Pool vibes, great city views. Boudin balls and wings available. Great for a casual pre-dinner drink.", rating:4.4, must:true  },
+    { id:9,  name:"Observatory Eleven",                type:"rooftop",    lat:29.951362,  lng:-90.0646773, address:"100 Iberville St, CBD",             notes:"MUST DO — Rooftop bar with stunning Mississippi River views. Very romantic. Perfect pre-anniversary dinner spot on Dec 29. Stiff drinks, excellent service.", rating:4.2, must:true  },
+    { id:10, name:"Rosie's on the Roof — Higgins Hotel", type:"rooftop", lat:29.9425708, lng:-90.0697495, address:"1000 Magazine St, Warehouse District", notes:"MUST DO — Retro vibes, rooftop views, live music. Right next to the WWII Museum — perfect afternoon combo. Opens at 4PM daily. Try the crawfish beignets!", rating:4.6, must:true  },
+    { id:11, name:"Jackson Square",                    type:"activity",   lat:29.9574024, lng:-90.0629495, address:"French Quarter",                    notes:"Heart of the French Quarter. Street performers, artists, St. Louis Cathedral backdrop. Best at sunrise or just before sunset. Free to visit.", rating:4.7, must:false },
+    { id:12, name:"Preservation Hall",                 type:"activity",   lat:29.9582893, lng:-90.0653897, address:"726 St Peter St, French Quarter",   notes:"Book tickets at preservationhall.com — sells out especially around New Year's! Legendary tiny jazz venue. 45-min sets nightly. No photos during show.", rating:4.7, must:false },
+    { id:13, name:"Steamboat Natchez",                 type:"activity",   lat:29.9552704, lng:-90.0627252, address:"400 Toulouse St Wharf, French Quarter", notes:"MUST DO — Dinner jazz cruise on the Mississippi River. Book in advance. Gumbo, prime rib, live jazz on the top deck. Bloody Marys are excellent.", rating:4.4, must:true  },
+    { id:14, name:"National WWII Museum",              type:"activity",   lat:29.9430711, lng:-90.0705317, address:"945 Magazine St, Warehouse District", notes:"4.8 stars — one of the best museums in the US. Plan 3-4 hours minimum (7 buildings!). Keep your receipt to return within 7 days. Pairs perfectly with Rosie's on the Roof next door.", rating:4.8, must:false },
+    { id:15, name:"Caesars Superdome — Saints Game",   type:"activity",   lat:29.9511442, lng:-90.0810909, address:"1500 Sugar Bowl Dr, CBD",            notes:"MUST DO — Saints home game! Only a 15-min walk from your hotel. Food inside is great — jambalaya, gator sausage, cajun Philly. Saints fans are legendary.", rating:4.6, must:true  },
+    { id:16, name:"Royal Street Shopping",             type:"shopping",   lat:29.9546727, lng:-90.0680313, address:"Royal St, French Quarter",           notes:"25+ antique shops and art galleries. Highlights: M.S. Rau (rare antiques and jewelry), Lucullus (culinary antiques), Keil's Antiques (est. 1899). Best visited early morning before crowds.", rating:4.4, must:false }
+  ]
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+function log(msg, cls='') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+}
+
+const TEST_DATA = {
+  title: "Test Trip — Chicago",
+  emoji: "🧪",
+  travelers: "Test Travelers",
+  dates: "Jan 10–13, 2026",
+  header_subtitle: "January 10–12, 2026 · Test Hotel, Downtown",
+
+  flights: [
+    {
+      airline: "Test Airlines",
+      confirmation: "TEST01",
+      legs: [
+        { day: "Saturday, January 10 — Outbound", flight: "Test 100", from: "ROC", to: "ORD", departs: "8:00 AM", arrives: "9:30 AM" },
+        { day: "Monday, January 12 — Return",     flight: "Test 200", from: "ORD", to: "ROC", departs: "6:00 PM", arrives: "7:30 PM" }
+      ],
+      notes: [
+        { label: "Check In", value: "testairlines.com", conf: "TEST01" }
+      ]
+    }
+  ],
+
+  hotel: {
+    name: "Test Hotel Chicago",
+    address: "123 Michigan Ave, Chicago, IL",
+    phone: "(312) 555-0100",
+    confirmation: "TEST-HOTEL-01",
+    checkin: "Saturday, January 10 at 3:00 PM",
+    checkout: "Monday, January 12 at 11:00 AM",
+    room: "Standard King · 2 adults",
+    note: "This is a test trip — safe to delete or modify"
+  },
+
+  payment: {
+    vendor: "Test Vendor",
+    total: "$999.00",
+    remaining: "$0.00",
+    due_date: "January 1, 2026",
+    warning: "This is a test trip. No real payment required."
+  },
+
+  reservations: [
+    { name: "Test Restaurant Reservation", type: "Restaurant", confirmation: "RES-001", date: "Sunday, January 11", time: "7:00 PM", party: "2 adults", notes: "Test reservation entry" }
+  ],
+
+  places: [
+    { id:1, name:"Test Hotel Chicago",        type:"hotel",      lat:41.8827,  lng:-87.6233, address:"123 Michigan Ave, Downtown",      notes:"Your test home base. Check-in Jan 10 at 3PM.", rating:4.0, must:true  },
+    { id:2, name:"Test Restaurant (Italian)",  type:"restaurant", lat:41.8950,  lng:-87.6270, address:"456 N Clark St, River North",     notes:"MUST EAT — Great test pasta. Book ahead.", rating:4.5, must:true  },
+    { id:3, name:"Test Restaurant (Brunch)",   type:"restaurant", lat:41.8780,  lng:-87.6290, address:"789 W Randolph St, West Loop",    notes:"Famous test brunch spot. Expect a wait.", rating:4.3, must:false },
+    { id:4, name:"Test Bar (Rooftop)",         type:"rooftop",    lat:41.8865,  lng:-87.6187, address:"321 E Wacker Dr, Streeterville",  notes:"MUST DO — Great test views of the lake.", rating:4.4, must:true  },
+    { id:5, name:"Test Bar (Craft Beer)",      type:"bar",        lat:41.8910,  lng:-87.6340, address:"654 N Milwaukee Ave, River West", notes:"Local test brewery. Try the IPA.",         rating:4.2, must:false },
+    { id:6, name:"Test Museum",                type:"activity",   lat:41.8662,  lng:-87.6170, address:"1300 S Lake Shore Dr, Museum Campus", notes:"4.7 stars — excellent test museum. Plan 3 hours.", rating:4.7, must:false },
+    { id:7, name:"Test Activity (Boat Tour)",  type:"activity",   lat:41.8875,  lng:-87.6216, address:"Navy Pier, Streeterville",        notes:"MUST DO — Test architecture boat tour. Book in advance.", rating:4.6, must:true  },
+    { id:8, name:"Test Shopping District",     type:"shopping",   lat:41.8920,  lng:-87.6240, address:"The Magnificent Mile, Streeterville", notes:"Test shopping strip. Great for browsing.", rating:4.1, must:false }
+  ]
+};
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('sign-in-btn').textContent = '✓ Signed in as ' + user.email;
+    document.getElementById('sign-in-btn').disabled = true;
+    document.getElementById('upload-btn').disabled = false;
+    document.getElementById('test-btn').disabled = false;
+    document.getElementById('sync-btn').disabled = false;
+    document.getElementById('log').textContent = '';
+    log('Signed in as ' + user.email + '. Ready to upload.', 'ok');
+  }
+});
+
+const NOLA_PLACES_FULL = [
+    { id:1,  name:"Le Méridien New Orleans",          type:"hotel",      lat:29.9490896, lng:-90.0667143, address:"333 Poydras St, CBD",                 notes:"Your home base! Check-in Dec 26 at 4PM. Must leave by 5AM on Dec 31 for flight. Confirmation: 255-14453543. Walking distance to French Quarter and Superdome.", rating:4.0, must:true  },
+    { id:2,  name:"Café Du Monde",                    type:"restaurant", lat:29.9576044, lng:-90.0617687, address:"800 Decatur St, French Quarter",       notes:"MUST EAT — Iconic beignets and café au lait. Open late — hits different at midnight covered in powdered sugar. Never closes. Right on Jackson Square.", rating:4.5, must:true  },
+    { id:3,  name:"Willie Mae's Scotch House",        type:"restaurant", lat:29.9705047, lng:-90.0646157, address:"2401 St Ann St, Tremé",               notes:"MUST EAT — James Beard Award-winning fried chicken. Seasoned to the bone. Go when they open — fills up fast. Also get red beans and rice.", rating:4.5, must:true  },
+    { id:4,  name:"Galatoire's",                      type:"restaurant", lat:29.9549816, lng:-90.0689696, address:"209 Bourbon St, French Quarter",       notes:"MUST EAT — Trout meunière amandine, crab Maison. Jacket required after 5PM (they'll lend you one). Downstairs is first-come, first-served — no reservations needed.", rating:4.5, must:true  },
+    { id:5,  name:"Pat O'Brien's",                    type:"bar",        lat:29.9582008, lng:-90.0652973, address:"718 St Peter St, French Quarter",      notes:"MUST DO — Home of the Hurricane cocktail. Stunning flaming fountain courtyard. Dueling pianos at night. Closed Tuesdays — plan accordingly!", rating:4.5, must:true  },
+    { id:6,  name:"Tropical Isle",                    type:"bar",        lat:29.9579012, lng:-90.0660418, address:"610 Bourbon St, French Quarter",       notes:"MUST DO — Home of the original Hand Grenade cocktail. Grab one to-go in a green cup and walk Bourbon Street. Live music, great people watching.", rating:4.5, must:true  },
+    { id:7,  name:"Hot Tin — Pontchartrain Hotel",    type:"rooftop",    lat:29.934992,  lng:-90.0796649, address:"2031 St Charles Ave, Garden District", notes:"MUST DO — 270° panoramic views of the skyline and Mississippi River. 1940s artist loft aesthetic, dark and intimate. Ride the St. Charles streetcar ($1.25) to get there.", rating:4.4, must:true  },
+    { id:8,  name:"Above the Grid — NOPSI Hotel",    type:"rooftop",    lat:29.9520488, lng:-90.07265,   address:"317 Baronne St, CBD",                  notes:"MUST DO — Rooftop bar very close to your hotel. Pool vibes, great city views. Boudin balls and wings available. Great for a casual pre-dinner drink.", rating:4.4, must:true  },
+    { id:9,  name:"Observatory Eleven",               type:"rooftop",    lat:29.951362,  lng:-90.0646773, address:"100 Iberville St, CBD",                notes:"MUST DO — Rooftop bar with stunning Mississippi River views. Very romantic. Perfect pre-anniversary dinner spot on Dec 29. Stiff drinks, excellent service.", rating:4.2, must:true  },
+    { id:10, name:"Rosie's on the Roof — Higgins Hotel", type:"rooftop", lat:29.9425708, lng:-90.0697495, address:"1000 Magazine St, Warehouse District", notes:"MUST DO — Retro vibes, rooftop views, live music. Right next to the WWII Museum — perfect afternoon combo. Opens at 4PM daily. Try the crawfish beignets!", rating:4.6, must:true  },
+    { id:11, name:"Jackson Square",                   type:"activity",   lat:29.9574024, lng:-90.0629495, address:"French Quarter",                       notes:"Heart of the French Quarter. Street performers, artists, St. Louis Cathedral backdrop. Best at sunrise or just before sunset. Free to visit.", rating:4.7, must:false },
+    { id:12, name:"Preservation Hall",                type:"activity",   lat:29.9582893, lng:-90.0653897, address:"726 St Peter St, French Quarter",      notes:"Book tickets at preservationhall.com — sells out especially around New Year's! Legendary tiny jazz venue. 45-min sets nightly. No photos during show.", rating:4.7, must:false },
+    { id:13, name:"Steamboat Natchez",                type:"activity",   lat:29.9552704, lng:-90.0627252, address:"400 Toulouse St Wharf, French Quarter", notes:"MUST DO — Dinner jazz cruise on the Mississippi River. Book in advance. Gumbo, prime rib, live jazz on the top deck. Bloody Marys are excellent.", rating:4.4, must:true  },
+    { id:14, name:"National WWII Museum",             type:"activity",   lat:29.9430711, lng:-90.0705317, address:"945 Magazine St, Warehouse District",  notes:"4.8 stars — one of the best museums in the US. Plan 3-4 hours minimum (7 buildings!). Keep your receipt to return within 7 days. Pairs perfectly with Rosie's on the Roof next door.", rating:4.8, must:false },
+    { id:15, name:"Caesars Superdome — Saints Game",  type:"activity",   lat:29.9511442, lng:-90.0810909, address:"1500 Sugar Bowl Dr, CBD",               notes:"MUST DO — Saints home game! Only a 15-min walk from your hotel. Food inside is great — jambalaya, gator sausage, cajun Philly. Saints fans are legendary.", rating:4.6, must:true  },
+    { id:16, name:"Royal Street Shopping",            type:"shopping",   lat:29.9546727, lng:-90.0680313, address:"Royal St, French Quarter",              notes:"25+ antique shops and art galleries. Highlights: M.S. Rau (rare antiques and jewelry), Lucullus (culinary antiques), Keil's Antiques (est. 1899). Best visited early morning before crowds.", rating:4.4, must:false },
+    { id:17, name:"Brennan's",                        type:"restaurant", lat:29.9568,    lng:-90.0637,    address:"417 Royal St, French Quarter",          notes:"MUST EAT — New Orleans institution since 1946. Famous for Bananas Foster (invented here), turtle soup, and decadent Creole brunch. Go for brunch or dinner. Dress smart-casual.", rating:4.5, must:true  }
+];
+
+window.doSyncNola = async function() {
+  const btn = document.getElementById('sync-btn');
+  btn.disabled = true; btn.textContent = 'Syncing...';
+  document.getElementById('log').textContent = '';
+  try {
+    log('Finding NOLA trip in Firestore...', 'info');
+    const snap = await getDocs(collection(db, 'trips'));
+    let nolaId = null;
+    snap.forEach(d => { if(d.data().title === 'New Orleans, December 2026') nolaId = d.id; });
+    if (!nolaId) { log('NOLA trip not found in Firestore.', 'err'); btn.textContent = 'Not Found'; return; }
+    log('Found NOLA trip (id: ' + nolaId + '). Updating places...', 'info');
+    await updateDoc(doc(db, 'trips', nolaId), { places: NOLA_PLACES_FULL });
+    log('✓ Places updated — ' + NOLA_PLACES_FULL.length + ' places now in Firestore (added Brennan\'s).', 'ok');
+    btn.textContent = '✓ Done';
+  } catch(e) {
+    log('Sync failed: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Retry';
+  }
+};
+
+window.doUploadTest = async function() {
+  const btn = document.getElementById('test-btn');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  document.getElementById('log').textContent = '';
+  try {
+    log('Checking for existing test trip...', 'info');
+    const snap = await getDocs(collection(db, 'trips'));
+    const existing = [];
+    snap.forEach(d => { if(d.data().title === TEST_DATA.title) existing.push(d.id); });
+    if (existing.length) {
+      log('⚠️  Test trip already exists (id: ' + existing[0] + ').', 'err');
+      log('Delete it from Firestore console first to re-upload.', 'err');
+      btn.textContent = 'Already Uploaded'; return;
+    }
+    log('Writing test trip to Firestore...', 'info');
+    const docRef = await addDoc(collection(db, 'trips'), TEST_DATA);
+    log('✓ Test trip uploaded! Document ID: ' + docRef.id, 'ok');
+    log('✓ ' + TEST_DATA.places.length + ' places, 3 activity days (Jan 10–11)', 'ok');
+    log('\nYou can now close this page and open the main app.', 'ok');
+    btn.textContent = '✓ Done';
+  } catch(e) {
+    log('Upload failed: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Retry';
+  }
+};
+
+window.doSignIn = async function() {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    log('Sign-in failed: ' + e.message, 'err');
+  }
+};
+
+window.doUpload = async function() {
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+  document.getElementById('log').textContent = '';
+
+  try {
+    // Check for existing trips with same title
+    log('Checking for existing trips...', 'info');
+    const snap = await getDocs(collection(db, 'trips'));
+    const existing = [];
+    snap.forEach(d => { if(d.data().title === NOLA_DATA.title) existing.push(d.id); });
+
+    if (existing.length) {
+      log('⚠️  A trip with this title already exists (id: ' + existing[0] + ').', 'err');
+      log('Delete it from Firestore console first if you want to re-upload.', 'err');
+      btn.textContent = 'Already Uploaded';
+      return;
+    }
+
+    log('Writing trip document to Firestore...', 'info');
+    const docRef = await addDoc(collection(db, 'trips'), NOLA_DATA);
+    log('✓ Trip uploaded! Document ID: ' + docRef.id, 'ok');
+    log('✓ ' + NOLA_DATA.places.length + ' places included', 'ok');
+    log('✓ Flights, hotel, payment data included', 'ok');
+    log('\nYou can now close this page. The trip will appear in the main app.', 'ok');
+    btn.textContent = '✓ Done';
+  } catch(e) {
+    log('Upload failed: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Retry Upload';
+  }
+};
+</script>
+</body>
+</html>

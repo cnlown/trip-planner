@@ -159,7 +159,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 .no-results { padding:30px 16px; text-align:center; color:var(--muted); font-size:13px; font-style:italic; }
 
 /* ── DETAIL POPUP ── */
-.detail-popup { position:absolute; bottom:24px; left:20px; width:310px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; z-index:500; display:none; box-shadow:0 8px 40px rgba(0,0,0,0.65); animation:slideUp 0.18s ease; }
+.detail-popup { position:fixed; width:310px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; z-index:500; display:none; box-shadow:0 8px 40px rgba(0,0,0,0.65); animation:slideUp 0.18s ease; }
 @keyframes slideUp { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
 .detail-popup.show { display:block; }
 .popup-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
@@ -594,9 +594,34 @@ window.selectPlace = function(id) {
   notes.textContent=place.notes; notes.style.borderLeftColor=cfg.color;
   document.getElementById('popup-rating').innerHTML=place.rating?'<span class="stars">'+stars(place.rating)+'</span>&nbsp;'+place.rating+' / 5':'';
   document.getElementById('detail-popup').classList.add('show');
+  positionPopup(place.lat, place.lng);
   map.panTo({lat:place.lat,lng:place.lng});
   if(getTripDays().length) populatePopupItinSection(id);
 };
+
+function positionPopup(lat, lng) {
+  var popup = document.getElementById('detail-popup');
+  var mapDiv = document.getElementById('map');
+  var mapRect = mapDiv.getBoundingClientRect();
+  var proj = map.getProjection();
+  var bounds = map.getBounds();
+  if (!proj || !bounds) return;
+  var ne = proj.fromLatLngToPoint(bounds.getNorthEast());
+  var sw = proj.fromLatLngToPoint(bounds.getSouthWest());
+  var scale = mapRect.width / (ne.x - sw.x);
+  var pt = proj.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
+  var screenX = mapRect.left + (pt.x - sw.x) * scale;
+  var screenY = mapRect.top  + (pt.y - ne.y) * scale;
+  var pw = 318, gap = 16;
+  var left = screenX - pw - gap;
+  if (left < mapRect.left + 8) left = screenX + gap;
+  var top = screenY - 80;
+  var vh = window.innerHeight;
+  if (top < 60) top = 60;
+  if (top + 320 > vh - 8) top = vh - 328;
+  popup.style.left = left + 'px';
+  popup.style.top  = top  + 'px';
+}
 
 window.closePopup = function() {
   document.getElementById('detail-popup').classList.remove('show');
