@@ -495,13 +495,7 @@ function renderTripSelector(user, trips) {
 }
 
 window.showTripSelector = function() {
-  TRIP = null; activeFilter='all'; activePlace=null; activeDay=null;
-  Object.values(markers).forEach(m=>m.setMap(null));
-  markers={};
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelector('.filter-btn[data-type="all"]').classList.add('active');
   closePopup(); closeModal();
-  hideApp();
   show('trip-selector-screen');
 };
 
@@ -509,6 +503,9 @@ window.showTripSelector = function() {
 function openTrip(trip) {
   TRIP = trip;
   if (!TRIP.itinerary) TRIP.itinerary = {};
+  activeFilter='all'; activePlace=null; activeDay=null;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.filter-btn[data-type="all"]').classList.add('active');
   document.title = trip.title + ' — Trip Planner';
   document.getElementById('header-title').textContent = (trip.emoji||'') + ' ' + trip.title;
   document.getElementById('header-subtitle').textContent = trip.header_subtitle || (trip.dates + ' · ' + trip.travelers);
