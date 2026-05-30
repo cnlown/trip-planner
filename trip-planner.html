@@ -104,6 +104,45 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .popup-day-tag-remove { background:transparent; border:none; color:var(--hotel); cursor:pointer; font-size:11px; padding:0; opacity:0.6; margin-left:2px; }
 .popup-day-tag-remove:hover { opacity:1; }
 
+/* ── RESERVATIONS FORM ── */
+.res-add-btn { display:flex; align-items:center; justify-content:center; gap:6px; padding:8px 14px; background:rgba(232,184,75,0.08); border:1px solid rgba(232,184,75,0.25); color:var(--hotel); border-radius:8px; cursor:pointer; font-size:12px; font-weight:500; font-family:'DM Sans',sans-serif; margin-bottom:12px; transition:all 0.15s; width:100%; }
+.res-add-btn:hover { background:rgba(232,184,75,0.16); }
+.res-add-form { background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; display:none; }
+.res-add-form.open { display:block; }
+.res-form-row { display:flex; gap:8px; margin-bottom:8px; }
+.res-input { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:12px; padding:7px 10px; border-radius:6px; outline:none; min-width:0; }
+.res-input:focus { border-color:var(--hotel); }
+.res-input option { background:var(--surface); }
+.res-form-btns { display:flex; gap:8px; margin-top:10px; }
+.res-save-btn { flex:1; background:var(--hotel); border:none; color:#0f0e0c; padding:8px; border-radius:6px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.15s; }
+.res-save-btn:hover { background:#d4a53a; }
+.res-cancel-btn { background:var(--border); border:none; color:var(--muted); padding:8px 16px; border-radius:6px; font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; transition:all 0.15s; }
+.res-cancel-btn:hover { color:var(--text); }
+.res-delete-btn { background:transparent; border:none; color:var(--muted); font-size:12px; cursor:pointer; padding:2px 6px; border-radius:4px; opacity:0; transition:all 0.12s; }
+.res-card:hover .res-delete-btn { opacity:0.6; }
+.res-delete-btn:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); opacity:1 !important; }
+
+/* ── MOBILE ── */
+.panel-handle { display:none; justify-content:center; padding:10px 0 4px; cursor:pointer; flex-shrink:0; }
+.panel-handle-bar { width:36px; height:4px; background:var(--border); border-radius:2px; }
+.panel-toggle { display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:600; background:var(--surface); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:20px; font-size:12px; font-weight:500; font-family:'DM Sans',sans-serif; cursor:pointer; box-shadow:0 4px 20px rgba(0,0,0,0.5); align-items:center; gap:7px; transition:all 0.18s; white-space:nowrap; }
+.panel-toggle:hover { border-color:var(--hotel); color:var(--hotel); }
+.panel-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:999; }
+.panel-backdrop.show { display:block; }
+
+@media (max-width:768px) {
+  .main { flex-direction:column; }
+  #map { flex:1; min-height:0; }
+  .panel { position:fixed !important; bottom:0; left:0; right:0; width:100% !important; height:72vh; transform:translateY(100%); transition:transform 0.3s ease; border-left:none !important; border-top:1px solid var(--border); border-radius:16px 16px 0 0; z-index:1000; }
+  .panel.mobile-open { transform:translateY(0); }
+  .panel-handle { display:flex; }
+  .panel-toggle { display:flex; }
+  .filters { overflow-x:auto; flex-wrap:nowrap !important; -webkit-overflow-scrolling:touch; }
+  .filters::-webkit-scrollbar { display:none; }
+  .header-btn.ghost span { display:none; }
+  .detail-popup { right:8px !important; left:8px !important; width:auto !important; }
+}
+
 /* ── HEADER ── */
 header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface); flex-shrink:0; gap:10px; flex-wrap:wrap; }
 .title-block h1 { font-family:'Playfair Display',serif; font-size:17px; font-weight:700; color:var(--hotel); white-space:nowrap; }
@@ -291,6 +330,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 <div class="main" id="app-main" style="display:none">
   <div id="map"></div>
   <div class="panel">
+    <div class="panel-handle" onclick="toggleMobilePanel()"><div class="panel-handle-bar"></div></div>
     <div class="panel-tabs">
       <button class="panel-tab active" data-panel="places">Places</button>
       <button class="panel-tab" data-panel="itinerary">Itinerary</button>
@@ -307,6 +347,9 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
     </div>
   </div>
 </div>
+
+<button class="panel-toggle" id="panel-toggle" onclick="toggleMobilePanel()">🗺️ Places & Itinerary</button>
+<div class="panel-backdrop" id="panel-backdrop" onclick="toggleMobilePanel()"></div>
 
 <!-- DETAIL POPUP -->
 <div class="detail-popup" id="detail-popup">
@@ -349,12 +392,14 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       <button class="modal-tab" data-tab="hotel">🏨 Hotel</button>
       <button class="modal-tab" data-tab="payment">💳 Payment</button>
       <button class="modal-tab" data-tab="reservations">📋 Reservations</button>
+      <button class="modal-tab" data-tab="weather">🌤️ Weather</button>
     </div>
     <div class="modal-body">
       <div class="tab-panel active" id="tab-flights"></div>
       <div class="tab-panel" id="tab-hotel"></div>
       <div class="tab-panel" id="tab-payment"></div>
       <div class="tab-panel" id="tab-reservations"></div>
+      <div class="tab-panel" id="tab-weather"></div>
     </div>
   </div>
 </div>
@@ -528,6 +573,16 @@ window.initMap = function() {
   if(window._pendingTrip && TRIP) { plotMarkers(); renderList(); buildModal(); attachFilterListeners(); attachPanelTabs(); renderItinerary(); }
 };
 
+function makeNumberedIcon(num, type) {
+  var cfg = TYPE_CONFIG[type]||{color:'#e8b84b'};
+  var s=40, r=s/2;
+  var svg='<svg width="'+s+'" height="'+s+'" viewBox="0 0 '+s+' '+s+'" xmlns="http://www.w3.org/2000/svg">'
+    +'<circle cx="'+r+'" cy="'+r+'" r="'+(r-2)+'" fill="'+cfg.color+'" stroke="#0f0e0c" stroke-width="2.5"/>'
+    +'<text x="'+r+'" y="'+(r+5)+'" text-anchor="middle" font-size="15" font-weight="700" font-family="sans-serif" fill="#0f0e0c">'+num+'</text>'
+    +'</svg>';
+  return {url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(s,s),anchor:new google.maps.Point(r,r)};
+}
+
 function makeIcon(type, active) {
   var cfg = TYPE_CONFIG[type]||{color:'#aaa',emoji:'📍'};
   var s=active?44:36, r=s/2;
@@ -619,7 +674,7 @@ function attachFilterListeners() {
 
 // ── MODAL ──
 function buildModal() {
-  buildFlightsTab(); buildHotelTab(); buildPaymentTab(); buildReservationsTab();
+  buildFlightsTab(); buildHotelTab(); buildPaymentTab(); buildReservationsTab(); buildWeatherTab();
 }
 
 function buildFlightsTab() {
@@ -683,17 +738,77 @@ function buildPaymentTab() {
 }
 
 function buildReservationsTab() {
-  var res=TRIP.reservations||[];
-  if(!res.length){document.getElementById('tab-reservations').innerHTML='<div class="empty-res"><div class="empty-icon">📋</div>No reservations added yet.<br><span style="font-size:11px;margin-top:6px;display:block">Dinner reservations, show tickets, and tour bookings will appear here once booked.</span></div>';return;}
-  document.getElementById('tab-reservations').innerHTML=res.map(r=>'<div class="res-card">'
-    +'<div class="res-card-header"><div class="res-card-name">'+r.name+'</div><div class="res-card-type">'+r.type+'</div></div>'
-    +(r.confirmation?'<span class="conf-badge">'+r.confirmation+'</span>':'')
-    +'<div class="res-card-rows">'
-    +(r.date?'<div class="res-card-row"><div class="res-card-label">Date</div><div class="res-card-value">'+r.date+'</div></div>':'')
-    +(r.time?'<div class="res-card-row"><div class="res-card-label">Time</div><div class="res-card-value">'+r.time+'</div></div>':'')
-    +(r.party?'<div class="res-card-row"><div class="res-card-label">Party</div><div class="res-card-value">'+r.party+'</div></div>':'')
-    +(r.notes?'<div class="res-card-row"><div class="res-card-label">Notes</div><div class="res-card-value">'+r.notes+'</div></div>':'')
-    +'</div></div>').join('');
+  var res = TRIP.reservations||[];
+  var days = getTripDays();
+  var dayOptions = days.map(function(d){return '<option value="'+formatDayLabel(d)+'">'+formatDayShort(d)+'</option>';}).join('');
+  var cards = res.length ? res.map(function(r,idx){
+    return '<div class="res-card">'
+      +'<div class="res-card-header">'
+      +'<div><div class="res-card-name">'+r.name+'</div><div class="res-card-type">'+r.type+'</div></div>'
+      +'<button class="res-delete-btn" onclick="deleteReservation('+idx+')" title="Remove">✕</button>'
+      +'</div>'
+      +(r.confirmation?'<span class="conf-badge" style="margin-bottom:6px;display:inline-block">'+r.confirmation+'</span>':'')
+      +'<div class="res-card-rows">'
+      +(r.date?'<div class="res-card-row"><div class="res-card-label">Date</div><div class="res-card-value">'+r.date+'</div></div>':'')
+      +(r.time?'<div class="res-card-row"><div class="res-card-label">Time</div><div class="res-card-value">'+r.time+'</div></div>':'')
+      +(r.party?'<div class="res-card-row"><div class="res-card-label">Party</div><div class="res-card-value">'+r.party+'</div></div>':'')
+      +(r.notes?'<div class="res-card-row"><div class="res-card-label">Notes</div><div class="res-card-value">'+r.notes+'</div></div>':'')
+      +'</div></div>';
+  }).join('') : '<div class="empty-res" id="res-empty"><div class="empty-icon">📋</div>No reservations yet.<br><span style="font-size:11px;margin-top:6px;display:block">Add dinner bookings, show tickets, and tour confirmations below.</span></div>';
+
+  document.getElementById('tab-reservations').innerHTML =
+    '<button class="res-add-btn" onclick="toggleResForm()">＋ Add Reservation</button>'
+    +'<div class="res-add-form" id="res-add-form">'
+    +'<div class="res-form-row"><input class="res-input" id="rf-name" placeholder="Name (e.g. Preservation Hall)"></div>'
+    +'<div class="res-form-row">'
+    +'<select class="res-input" id="rf-type"><option value="Restaurant">🍽️ Restaurant</option><option value="Show / Concert">🎭 Show / Concert</option><option value="Tour">⛵ Tour</option><option value="Activity">🎯 Activity</option><option value="Other">📌 Other</option></select>'
+    +(dayOptions?'<select class="res-input" id="rf-date"><option value="">Date...</option>'+dayOptions+'</select>':'<input class="res-input" id="rf-date" placeholder="Date">')
+    +'</div>'
+    +'<div class="res-form-row"><input class="res-input" id="rf-time" placeholder="Time (e.g. 7:00 PM)"><input class="res-input" id="rf-party" placeholder="Party (e.g. 2 adults)"></div>'
+    +'<div class="res-form-row"><input class="res-input" id="rf-conf" placeholder="Confirmation # (optional)"></div>'
+    +'<div class="res-form-row"><input class="res-input" id="rf-notes" placeholder="Notes (optional)"></div>'
+    +'<div class="res-form-btns"><button class="res-save-btn" onclick="saveReservation()">Save Reservation</button><button class="res-cancel-btn" onclick="toggleResForm()">Cancel</button></div>'
+    +'</div>'
+    + cards;
+}
+
+window.toggleResForm = function() {
+  var form = document.getElementById('res-add-form');
+  if (!form) return;
+  var isOpen = form.classList.contains('open');
+  form.classList.toggle('open', !isOpen);
+  if (!isOpen) document.getElementById('rf-name') && document.getElementById('rf-name').focus();
+};
+
+window.saveReservation = function() {
+  var name = (document.getElementById('rf-name')||{}).value||'';
+  if (!name.trim()) { document.getElementById('rf-name').style.borderColor='#e85c4a'; return; }
+  var entry = {
+    name: name.trim(),
+    type: (document.getElementById('rf-type')||{}).value||'Other',
+    date: (document.getElementById('rf-date')||{}).value||'',
+    time: (document.getElementById('rf-time')||{}).value||'',
+    party: (document.getElementById('rf-party')||{}).value||'',
+    confirmation: (document.getElementById('rf-conf')||{}).value||'',
+    notes: (document.getElementById('rf-notes')||{}).value||''
+  };
+  if (!TRIP.reservations) TRIP.reservations = [];
+  TRIP.reservations.push(entry);
+  saveReservations();
+  buildReservationsTab();
+};
+
+window.deleteReservation = function(idx) {
+  if (!TRIP.reservations) return;
+  TRIP.reservations.splice(idx, 1);
+  saveReservations();
+  buildReservationsTab();
+};
+
+async function saveReservations() {
+  if (!TRIP||!TRIP.id) return;
+  try { await updateDoc(doc(db,'trips',TRIP.id),{reservations:TRIP.reservations}); }
+  catch(e) { console.error('saveReservations:',e); }
 }
 
 // ── ITINERARY ──
@@ -808,11 +923,26 @@ function attachPanelTabs() {
 window.toggleDay = function(date) {
   if (activeDay===date) {
     activeDay=null;
-    (TRIP.places||[]).forEach(function(p){ if(markers[p.id]) markers[p.id].setVisible(activeFilter==='all'||p.type===activeFilter); });
+    (TRIP.places||[]).forEach(function(p){
+      if(!markers[p.id]) return;
+      markers[p.id].setVisible(activeFilter==='all'||p.type===activeFilter);
+      markers[p.id].setIcon(makeIcon(p.type, p.id===activePlace));
+      markers[p.id].setZIndex(p.type==='hotel'?100:1);
+    });
   } else {
     activeDay=date;
-    var dayIds=new Set(((TRIP.itinerary||{})[date]||[]).map(function(i){return i.placeId;}));
-    (TRIP.places||[]).forEach(function(p){ if(markers[p.id]) markers[p.id].setVisible(dayIds.has(p.id)); });
+    var dayItems=((TRIP.itinerary||{})[date]||[]);
+    var dayIds=new Set(dayItems.map(function(i){return i.placeId;}));
+    (TRIP.places||[]).forEach(function(p){
+      if(!markers[p.id]) return;
+      var vis=dayIds.has(p.id);
+      markers[p.id].setVisible(vis);
+      if(vis) {
+        var idx=dayItems.findIndex(function(i){return i.placeId===p.id;});
+        markers[p.id].setIcon(makeNumberedIcon(idx+1, p.type));
+        markers[p.id].setZIndex(1000-idx);
+      }
+    });
   }
   closePopup(); renderItinerary();
 };
@@ -896,6 +1026,72 @@ window.setTimeSlot = function(date, idx, slot, customTime) {
   saveItinerary(); renderItinerary(); updatePopupItinTags(activePlace);
 };
 
+// ── WEATHER ──
+async function buildWeatherTab() {
+  var el = document.getElementById('tab-weather');
+  if (!el) return;
+  var days = getTripDays();
+  if (!days.length) { el.innerHTML='<div class="empty-res"><div class="empty-icon">🌤️</div>No trip days found.</div>'; return; }
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Loading weather...</div>';
+  var hotelPlace = (TRIP.places||[]).find(function(p){return p.type==='hotel';});
+  var lat = hotelPlace ? hotelPlace.lat : 29.95;
+  var lng = hotelPlace ? hotelPlace.lng : -90.07;
+  var start = days[0], end = days[days.length-1];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var tripStart = new Date(start+'T12:00:00Z');
+  var daysUntil = Math.round((tripStart-today)/(1000*60*60*24));
+  var useForecast = daysUntil>=0 && daysUntil<=14;
+  var fetchStart = start, fetchEnd = end, label = '';
+  if (!useForecast) {
+    var yr = daysUntil>14 ? -1 : 0;
+    fetchStart = start.replace(/^(\d{4})/,function(y){return parseInt(y)+yr;});
+    fetchEnd   = end.replace(/^(\d{4})/,function(y){return parseInt(y)+yr;});
+    label = daysUntil>14 ? 'Typical weather (last year\'s actuals — forecast available ~2 weeks out)' : 'Historical weather';
+  } else { label = '14-day forecast'; }
+  try {
+    var apiBase = useForecast ? 'https://api.open-meteo.com/v1/forecast' : 'https://archive-api.open-meteo.com/v1/archive';
+    var fields = useForecast
+      ? 'temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max'
+      : 'temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum';
+    var url = apiBase+'?latitude='+lat+'&longitude='+lng+'&daily='+fields+'&temperature_unit=fahrenheit&timezone=America%2FChicago&start_date='+fetchStart+'&end_date='+fetchEnd;
+    var data = await (await fetch(url)).json();
+    if (!data.daily) throw new Error('No data');
+    var html = '<div style="padding:8px 14px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">'+label+'</div>';
+    days.forEach(function(date,i) {
+      var code=(data.daily.weathercode||[])[i]||0;
+      var hi=Math.round((data.daily.temperature_2m_max||[])[i]||0);
+      var lo=Math.round((data.daily.temperature_2m_min||[])[i]||0);
+      var precip=(data.daily.precipitation_probability_max||data.daily.precipitation_sum||[])[i];
+      var precipLabel = useForecast ? (precip+'% chance rain') : (precip ? precip.toFixed(1)+'" precip' : '');
+      html+='<div class="info-section" style="margin-bottom:8px">'
+        +'<div style="display:flex;align-items:center;gap:12px;padding:12px 14px">'
+        +'<span style="font-size:30px;flex-shrink:0">'+wmoEmoji(code)+'</span>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text)">'+formatDayLabel(date)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+wmoDesc(code)+'</div></div>'
+        +'<div style="text-align:right;flex-shrink:0"><div style="font-size:15px;font-weight:600;color:var(--text)">'+hi+'° / '+lo+'°F</div>'
+        +(precipLabel?'<div style="font-size:10px;color:#5cb8e8;margin-top:2px">💧 '+precipLabel+'</div>':'')
+        +'</div></div></div>';
+    });
+    el.innerHTML=html;
+  } catch(e) {
+    el.innerHTML='<div class="empty-res"><div class="empty-icon">🌤️</div>Could not load weather.<br><span style="font-size:11px;margin-top:4px;display:block;color:var(--muted)">'+e.message+'</span></div>';
+  }
+}
+
+function wmoEmoji(c){if(c===0)return'☀️';if(c<=2)return'⛅';if(c<=3)return'☁️';if(c<=48)return'🌫️';if(c<=57)return'🌦️';if(c<=67)return'🌧️';if(c<=77)return'🌨️';if(c<=82)return'🌧️';if(c<=86)return'❄️';return'⛈️';}
+function wmoDesc(c){if(c===0)return'Clear sky';if(c<=2)return'Partly cloudy';if(c<=3)return'Overcast';if(c<=48)return'Foggy';if(c<=57)return'Drizzle';if(c<=67)return'Rain';if(c<=77)return'Snow';if(c<=82)return'Rain showers';if(c<=86)return'Snow showers';return'Thunderstorm';}
+
+// ── MOBILE PANEL ──
+window.toggleMobilePanel = function() {
+  var panel = document.querySelector('.panel');
+  var backdrop = document.getElementById('panel-backdrop');
+  var toggle = document.getElementById('panel-toggle');
+  var isOpen = panel.classList.contains('mobile-open');
+  panel.classList.toggle('mobile-open', !isOpen);
+  backdrop.classList.toggle('show', !isOpen);
+  if(toggle) toggle.style.display = isOpen ? '' : 'none';
+};
+
 async function saveItinerary() {
   if (!TRIP||!TRIP.id) return;
   try { await updateDoc(doc(db,'trips',TRIP.id),{itinerary:TRIP.itinerary}); }
@@ -909,6 +1105,7 @@ document.querySelectorAll('.modal-tab').forEach(tab=>{
     document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-'+t).classList.add('active');
+    if(t==='weather') buildWeatherTab();
   });
 });
 
