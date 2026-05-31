@@ -49,6 +49,16 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .trip-card-archive { position:absolute; top:7px; right:8px; background:transparent; border:none; font-size:13px; color:var(--border); cursor:pointer; opacity:0; transition:all 0.15s; padding:2px 4px; border-radius:4px; line-height:1; }
 .trip-card:hover .trip-card-archive { opacity:1; color:var(--muted); }
 .trip-card-archive:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); }
+.trip-card-delete { position:absolute; top:7px; left:8px; background:transparent; border:none; font-size:13px; color:var(--border); cursor:pointer; opacity:0; transition:all 0.15s; padding:2px 4px; border-radius:4px; line-height:1; }
+.trip-card:hover .trip-card-delete { opacity:1; color:var(--muted); }
+.trip-card-delete:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); }
+.trip-card-confirm { position:absolute; inset:0; background:rgba(232,92,74,0.12); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+.trip-card-confirm-msg { font-size:11px; color:#e85c4a; font-weight:500; }
+.trip-card-confirm-btns { display:flex; gap:6px; }
+.trip-card-confirm-yes { background:#e85c4a; border:none; color:#fff; font-size:11px; font-weight:600; padding:4px 12px; border-radius:5px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.trip-card-confirm-yes:hover { background:#d04535; }
+.trip-card-confirm-no { background:transparent; border:1px solid var(--border); color:var(--muted); font-size:11px; padding:4px 10px; border-radius:5px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.trip-card-confirm-no:hover { color:var(--text); }
 .trip-card.archived-card { opacity:0.45; }
 .trip-card.archived-card:hover { opacity:0.9; border-color:var(--muted); }
 .archived-toggle { font-size:12px; color:var(--muted); cursor:pointer; padding:6px 14px; border:1px solid var(--border); border-radius:14px; background:transparent; font-family:'DM Sans',sans-serif; transition:all 0.15s; margin-top:4px; }
@@ -621,7 +631,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const ALLOWED_EMAILS = ['cnlown@gmail.com', 'brooke1713@gmail.com'];
 
@@ -743,11 +753,13 @@ function renderTripSelector(user, trips) {
   visible.forEach(trip => {
     const card = document.createElement('div');
     card.className = 'trip-card' + (trip.archived ? ' archived-card' : '');
+    card.dataset.tripId = trip.id;
     card.innerHTML = '<div class="tc-emoji">'+(trip.emoji||'🗺️')+'</div>'
       +'<div class="tc-title">'+trip.title+'</div>'
       +'<div class="tc-dates">'+(trip.archived ? '📦 Archived' : (trip.dates||''))+'</div>'
       +'<button class="trip-card-archive" onclick="event.stopPropagation();toggleArchiveTrip(\''+trip.id+'\','+!!trip.archived+')" title="'+(trip.archived?'Unarchive':'Archive')+'">'
-      +(trip.archived ? '↩' : '📦')+'</button>';
+      +(trip.archived ? '↩' : '📦')+'</button>'
+      +(trip.archived ? '<button class="trip-card-delete" onclick="event.stopPropagation();promptDeleteTrip(\''+trip.id+'\')" title="Delete permanently">🗑</button>' : '');
     card.onclick = () => openTrip(trip);
     container.appendChild(card);
   });
@@ -1514,6 +1526,29 @@ var selectedEmoji = '🗺️';
 window.toggleArchiveTrip = async function(tripId, isArchived) {
   try {
     await updateDoc(doc(db,'trips',tripId), {archived: !isArchived});
+    var snap = await getDocs(collection(db,'trips'));
+    var updatedTrips = [];
+    snap.forEach(function(d){ updatedTrips.push(Object.assign({id:d.id},d.data())); });
+    renderTripSelector(currentUser, updatedTrips);
+  } catch(e) { console.error(e); }
+};
+
+window.promptDeleteTrip = function(tripId) {
+  var card = document.querySelector('[data-trip-id="'+tripId+'"]');
+  if (!card) return;
+  var confirm = document.createElement('div');
+  confirm.className = 'trip-card-confirm';
+  confirm.innerHTML = '<div class="trip-card-confirm-msg">Delete permanently?</div>'
+    +'<div class="trip-card-confirm-btns">'
+    +'<button class="trip-card-confirm-yes" onclick="event.stopPropagation();confirmDeleteTrip(\''+tripId+'\')">Delete</button>'
+    +'<button class="trip-card-confirm-no" onclick="event.stopPropagation();this.closest(\'.trip-card-confirm\').remove()">Cancel</button>'
+    +'</div>';
+  card.appendChild(confirm);
+};
+
+window.confirmDeleteTrip = async function(tripId) {
+  try {
+    await deleteDoc(doc(db,'trips',tripId));
     var snap = await getDocs(collection(db,'trips'));
     var updatedTrips = [];
     snap.forEach(function(d){ updatedTrips.push(Object.assign({id:d.id},d.data())); });
