@@ -772,7 +772,7 @@ function renderTripSelector(user, trips) {
   container.appendChild(c);
 
   // Archived toggle
-  if (archived.length) {
+  if (archived.length || showingArchived) {
     const tog = document.createElement('button');
     tog.className='archived-toggle';
     tog.textContent = showingArchived ? '← Back to trips' : '📦 '+archived.length+' archived trip'+(archived.length!==1?'s':'');
