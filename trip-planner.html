@@ -197,6 +197,15 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 .place-type-tag { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-top:1px; }
 .place-note { font-size:11px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .no-results { padding:30px 16px; text-align:center; color:var(--muted); font-size:13px; font-style:italic; }
+.place-delete-btn { background:transparent; border:none; color:var(--muted); font-size:13px; cursor:pointer; padding:2px 6px; border-radius:4px; opacity:0; transition:all 0.12s; flex-shrink:0; }
+.place-item:hover .place-delete-btn { opacity:0.5; }
+.place-delete-btn:hover { color:#e85c4a !important; background:rgba(232,92,74,0.12); opacity:1 !important; }
+.place-confirm { background:rgba(232,92,74,0.08); border:1px solid rgba(232,92,74,0.3); border-radius:8px; padding:8px 10px; margin-bottom:3px; display:flex; align-items:center; gap:8px; }
+.place-confirm-msg { flex:1; font-size:11px; color:#e85c4a; }
+.place-confirm-yes { background:#e85c4a; border:none; color:#fff; font-size:11px; font-weight:600; padding:3px 10px; border-radius:5px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.place-confirm-yes:hover { background:#d04535; }
+.place-confirm-no { background:transparent; border:1px solid var(--border); color:var(--muted); font-size:11px; padding:3px 10px; border-radius:5px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.place-confirm-no:hover { color:var(--text); }
 
 /* ── DETAIL POPUP ── */
 .detail-popup { position:fixed; right:298px; top:72px; width:310px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; z-index:500; display:none; box-shadow:0 8px 40px rgba(0,0,0,0.65); animation:slideUp 0.18s ease; }
@@ -428,7 +437,7 @@ const provider = new GoogleAuthProvider();
 
 var TRIP = null;
 var map, markers = {}, activeFilter = 'all', activePlace = null, activeDay = null, mapReady = false;
-var dragSrc = null, tsPicker = null;
+var dragSrc = null, tsPicker = null, pendingDeleteId = null;
 
 const TYPE_CONFIG = {
   hotel:      { color:'#e8b84b', label:'Hotel',       emoji:'🏨' },
@@ -618,13 +627,22 @@ function renderList() {
   if(!filtered.length){list.innerHTML='<div class="no-results">No places in this category.</div>';return;}
   list.innerHTML=filtered.map(p=>{
     var cfg=TYPE_CONFIG[p.type]||{color:'#aaa',emoji:'📍',label:'Place'};
+    if(pendingDeleteId===p.id) {
+      return '<div class="place-confirm" id="li-'+p.id+'">'
+        +'<div class="place-confirm-msg">Remove <strong>'+p.name+'</strong>?</div>'
+        +'<button class="place-confirm-yes" onclick="confirmDeletePlace('+p.id+')">Remove</button>'
+        +'<button class="place-confirm-no" onclick="cancelDeletePlace()">Cancel</button>'
+        +'</div>';
+    }
     return '<div class="place-item'+(activePlace===p.id?' active':'')+'" onclick="selectPlace('+p.id+')" id="li-'+p.id+'">'
       +'<div class="place-color-bar" style="background:'+cfg.color+'"></div>'
       +'<div class="place-info">'
       +'<div class="place-name">'+(p.must?'⭐ ':'')+p.name+'</div>'
       +'<div class="place-type-tag">'+cfg.emoji+' '+cfg.label+'</div>'
       +'<div class="place-note">'+p.address+'</div>'
-      +'</div></div>';
+      +'</div>'
+      +'<button class="place-delete-btn" onclick="event.stopPropagation();promptDeletePlace('+p.id+')" title="Remove place">✕</button>'
+      +'</div>';
   }).join('');
 }
 
@@ -1090,6 +1108,40 @@ window.toggleMobilePanel = function() {
   panel.classList.toggle('mobile-open', !isOpen);
   backdrop.classList.toggle('show', !isOpen);
   if(toggle) toggle.style.display = isOpen ? '' : 'none';
+};
+
+// ── DELETE PLACE ──
+window.promptDeletePlace = function(id) {
+  pendingDeleteId = id;
+  if(activePlace===id) closePopup();
+  renderList();
+  var el = document.getElementById('li-'+id);
+  if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+
+window.cancelDeletePlace = function() {
+  pendingDeleteId = null;
+  renderList();
+};
+
+window.confirmDeletePlace = async function(id) {
+  if(!TRIP||!TRIP.id) return;
+  // Remove from itinerary first
+  if(TRIP.itinerary) {
+    Object.keys(TRIP.itinerary).forEach(function(date) {
+      TRIP.itinerary[date] = (TRIP.itinerary[date]||[]).filter(function(i){return i.placeId!==id;});
+    });
+  }
+  // Remove from places
+  TRIP.places = (TRIP.places||[]).filter(function(p){return p.id!==id;});
+  pendingDeleteId = null;
+  if(activePlace===id) closePopup();
+  if(markers[id]) { markers[id].setMap(null); delete markers[id]; }
+  try {
+    await updateDoc(doc(db,'trips',TRIP.id),{places:TRIP.places, itinerary:TRIP.itinerary||{}});
+  } catch(e) { console.error('confirmDeletePlace:',e); }
+  renderList();
+  renderItinerary();
 };
 
 async function saveItinerary() {
