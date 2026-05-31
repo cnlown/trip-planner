@@ -514,7 +514,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       <div><h2>🗺️ New Trip</h2><p>Set up the basics — add places and details after</p></div>
       <button class="modal-close-btn" onclick="closeNewTripModal()">✕</button>
     </div>
-    <div class="new-trip-body">
+    <div class="new-trip-body" style="padding-bottom:24px">
       <div>
         <div class="nt-section-label">Pick an Emoji</div>
         <div class="nt-emoji-row" id="nt-emoji-row">
@@ -536,10 +536,10 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
         <div class="nt-section-label">Where are you going?</div>
         <input class="nt-input" id="nt-title" placeholder="e.g. Nashville, June 2027" style="font-size:15px;padding:11px 13px">
       </div>
-    </div>
-    <div class="nt-footer">
-      <button class="nt-cancel-btn" onclick="closeNewTripModal()">Cancel</button>
-      <button class="nt-create-btn" id="nt-create-btn" onclick="createTrip()">Create Trip →</button>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="nt-cancel-btn" onclick="closeNewTripModal()">Cancel</button>
+        <button class="nt-create-btn" id="nt-create-btn" onclick="createTrip()">Create Trip →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1313,7 +1313,6 @@ window.openNewTripModal = function() {
   document.getElementById('nt-create-btn').disabled=false;
   document.getElementById('nt-create-btn').textContent='Create Trip →';
   document.getElementById('new-trip-overlay').classList.add('show');
-  setTimeout(function(){ document.getElementById('nt-title').focus(); }, 100);
 };
 
 window.closeNewTripModal = function() {
@@ -1404,7 +1403,11 @@ window.doPlacesSearch = function() {
   service.textSearch({query:q, location:loc, radius:10000}, function(results,status) {
     btn.disabled=false; btn.textContent='Search';
     if (status!==google.maps.places.PlacesServiceStatus.OK||!results||!results.length) {
-      document.getElementById('search-results').innerHTML='<div class="search-empty">No results found. Try a different search.</div>';
+      var msg = status==='REQUEST_DENIED' ? 'Places API key error — check Google Cloud Console billing/restrictions.'
+              : status==='OVER_QUERY_LIMIT' ? 'Query limit exceeded — try again shortly.'
+              : status==='ZERO_RESULTS' || !results||!results.length ? 'No results found. Try a different search.'
+              : 'Search error: '+status;
+      document.getElementById('search-results').innerHTML='<div class="search-empty">'+msg+'</div>';
       return;
     }
     searchResultsCache = results.slice(0,12);
