@@ -454,7 +454,14 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
     <button class="popup-close" onclick="closePopup()">✕</button>
   </div>
   <div class="popup-badge" id="popup-badge"></div>
-  <div class="popup-address" id="popup-address"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="popup-address" id="popup-address" style="margin-bottom:0"></div>
+    <a id="popup-directions" href="#" target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:#5cb8e8;text-decoration:none;white-space:nowrap;padding:3px 8px;border:1px solid rgba(92,184,232,0.3);border-radius:6px;transition:all 0.15s"
+       onmouseover="this.style.background='rgba(92,184,232,0.1)'" onmouseout="this.style.background='transparent'">
+      🧭 Directions
+    </a>
+  </div>
   <div class="popup-notes" id="popup-notes"></div>
   <div class="popup-rating" id="popup-rating"></div>
   <div class="popup-itin-section" id="popup-itin-section" style="display:none">
@@ -835,6 +842,7 @@ window.selectPlace = function(id) {
   var badge=document.getElementById('popup-badge');
   badge.textContent=cfg.emoji+' '+cfg.label; badge.style.background=cfg.color;
   document.getElementById('popup-address').textContent='📍 '+place.address;
+  document.getElementById('popup-directions').href='https://www.google.com/maps/dir/?api=1&destination='+place.lat+','+place.lng;
   var notes=document.getElementById('popup-notes');
   notes.textContent=place.notes; notes.style.borderLeftColor=cfg.color;
   document.getElementById('popup-rating').innerHTML=place.rating?'<span class="stars">'+stars(place.rating)+'</span>&nbsp;'+place.rating+' / 5':'';
