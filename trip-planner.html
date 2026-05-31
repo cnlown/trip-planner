@@ -1547,6 +1547,7 @@ window.promptDeleteTrip = function(tripId) {
 };
 
 window.confirmDeleteTrip = async function(tripId) {
+  if (!window.confirm('This will permanently delete the trip and all its data. This cannot be undone.\n\nAre you absolutely sure?')) return;
   try {
     await deleteDoc(doc(db,'trips',tripId));
     var snap = await getDocs(collection(db,'trips'));
