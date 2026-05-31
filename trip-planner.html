@@ -111,6 +111,31 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .popup-day-tag-remove { background:transparent; border:none; color:var(--hotel); cursor:pointer; font-size:11px; padding:0; opacity:0.6; margin-left:2px; }
 .popup-day-tag-remove:hover { opacity:1; }
 
+/* ── PLACE PHOTOS ── */
+.place-thumb { width:40px; height:40px; border-radius:6px; flex-shrink:0; background:var(--border) center/cover no-repeat; margin-top:1px; }
+.popup-photo { width:100%; height:160px; object-fit:cover; border-radius:8px; margin-bottom:12px; display:none; }
+
+/* ── ITINERARY NOTES ── */
+.itin-note { font-size:10px; color:var(--muted); margin-top:2px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; transition:color 0.1s; }
+.itin-note:hover { color:var(--text); }
+.itin-note.empty { opacity:0; }
+.itin-item:hover .itin-note.empty { opacity:1; }
+.note-picker { position:fixed; z-index:3000; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; box-shadow:0 8px 30px rgba(0,0,0,0.6); width:220px; }
+.note-picker-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:12px; padding:6px 9px; outline:none; box-sizing:border-box; resize:none; min-height:60px; }
+.note-picker-input:focus { border-color:var(--hotel); }
+
+/* ── UNSCHEDULED PLACES ── */
+.unscheduled-section { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; opacity:0.85; }
+.unscheduled-header { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; cursor:pointer; background:rgba(255,255,255,0.02); transition:background 0.12s; user-select:none; }
+.unscheduled-header:hover { background:rgba(255,255,255,0.05); }
+.unscheduled-title { font-size:12px; font-weight:600; color:var(--muted); }
+.unscheduled-count { font-size:10px; color:var(--muted); background:var(--border); padding:2px 7px; border-radius:10px; }
+.unscheduled-items { padding:4px 8px 8px; }
+.unscheduled-item { display:flex; align-items:center; gap:8px; padding:5px 4px; border-radius:6px; cursor:pointer; transition:background 0.1s; }
+.unscheduled-item:hover { background:rgba(255,255,255,0.05); }
+.unscheduled-color-bar { width:3px; height:22px; border-radius:2px; flex-shrink:0; }
+.unscheduled-name { font-size:11.5px; color:var(--muted); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 /* ── RESERVATIONS FORM ── */
 .res-add-btn { display:flex; align-items:center; justify-content:center; gap:6px; padding:8px 14px; background:rgba(232,184,75,0.08); border:1px solid rgba(232,184,75,0.25); color:var(--hotel); border-radius:8px; cursor:pointer; font-size:12px; font-weight:500; font-family:'DM Sans',sans-serif; margin-bottom:12px; transition:all 0.15s; width:100%; }
 .res-add-btn:hover { background:rgba(232,184,75,0.16); }
@@ -453,6 +478,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 
 <!-- DETAIL POPUP -->
 <div class="detail-popup" id="detail-popup">
+  <img class="popup-photo" id="popup-photo" alt="">
   <div class="popup-header">
     <div class="popup-name" id="popup-name"></div>
     <button class="popup-close" onclick="closePopup()">✕</button>
@@ -613,7 +639,8 @@ const provider = new GoogleAuthProvider();
 var TRIP = null;
 var currentUser = null;
 var map, markers = {}, activeFilter = 'all', activePlace = null, activeDay = null, mapReady = false;
-var dragSrc = null, tsPicker = null, pendingDeleteId = null;
+var dragSrc = null, tsPicker = null, notePicker = null, pendingDeleteId = null;
+var placePhotoCache = {};
 
 const TYPE_CONFIG = {
   hotel:      { color:'#e8b84b', label:'Hotel',       emoji:'🏨' },
@@ -839,8 +866,10 @@ function renderList() {
         +'<button class="place-confirm-no" onclick="cancelDeletePlace()">Cancel</button>'
         +'</div>';
     }
+    var thumbStyle = placePhotoCache[p.id] ? 'background-image:url('+placePhotoCache[p.id]+')' : '';
     return '<div class="place-item'+(activePlace===p.id?' active':'')+'" onclick="selectPlace('+p.id+')" id="li-'+p.id+'">'
       +'<div class="place-color-bar" style="background:'+cfg.color+'"></div>'
+      +'<div class="place-thumb" id="thumb-'+p.id+'" style="'+thumbStyle+'"></div>'
       +'<div class="place-info">'
       +'<div class="place-name">'+(p.must?'⭐ ':'')+p.name+'</div>'
       +'<div class="place-type-tag">'+cfg.emoji+' '+cfg.label+'</div>'
@@ -870,7 +899,16 @@ window.selectPlace = function(id) {
   var notes=document.getElementById('popup-notes');
   notes.textContent=place.notes; notes.style.borderLeftColor=cfg.color;
   document.getElementById('popup-rating').innerHTML=place.rating?'<span class="stars">'+stars(place.rating)+'</span>&nbsp;'+place.rating+' / 5':'';
+  var photoEl=document.getElementById('popup-photo');
+  if (placePhotoCache[id]) { photoEl.src=placePhotoCache[id]; photoEl.style.display='block'; }
+  else { photoEl.style.display='none'; }
   document.getElementById('detail-popup').classList.add('show');
+  fetchPlacePhoto(place).then(function(uri) {
+    if (activePlace!==id) return;
+    if (uri) { photoEl.src=uri; photoEl.style.display='block'; }
+    var thumb=document.getElementById('thumb-'+id);
+    if (thumb&&uri) thumb.style.backgroundImage='url('+uri+')';
+  });
   map.panTo({lat:place.lat,lng:place.lng});
   if(getTripDays().length) populatePopupItinSection(id);
 };
@@ -881,6 +919,34 @@ window.closePopup = function() {
   if(TRIP&&!activeDay)(TRIP.places||[]).forEach(p=>{markers[p.id].setIcon(makeIcon(p.type,false));markers[p.id].setZIndex(p.type==='hotel'?100:1);});
   renderList();
 };
+
+// ── PLACE PHOTOS ──
+async function fetchPlacePhoto(place) {
+  if (placePhotoCache[place.id] !== undefined) return placePhotoCache[place.id];
+  placePhotoCache[place.id] = '';
+  try {
+    var {Place} = await google.maps.importLibrary('places');
+    var p;
+    if (place.googlePlaceId) {
+      p = new Place({id: place.googlePlaceId});
+    } else {
+      var res = await Place.searchByText({
+        textQuery: place.name,
+        fields: ['photos'],
+        locationBias: {center: {lat: place.lat, lng: place.lng}, radius: 200},
+        maxResultCount: 1
+      });
+      p = res.places && res.places[0];
+    }
+    if (p) {
+      await p.fetchFields({fields: ['photos']});
+      if (p.photos && p.photos.length) {
+        placePhotoCache[place.id] = p.photos[0].getURI({maxWidth: 400});
+      }
+    }
+  } catch(e) {}
+  return placePhotoCache[place.id];
+}
 
 // ── FILTERS ──
 function attachFilterListeners() {
@@ -1069,12 +1135,14 @@ function renderItinItem(item, date, idx) {
   if (!place) return '';
   var cfg = TYPE_CONFIG[place.type]||{color:'#aaa'};
   var tsLabel = item.customTime || (item.timeSlot ? (TS_LABELS[item.timeSlot]||item.timeSlot) : '+ time');
+  var note = item.note || '';
   return '<div class="itin-item" draggable="true" data-date="'+date+'" data-idx="'+idx+'">'
     +'<span class="drag-handle">⠿</span>'
     +'<div class="itin-color-bar" style="background:'+cfg.color+'"></div>'
     +'<div class="itin-info">'
     +'<div class="itin-name">'+(place.must?'⭐ ':'')+place.name+'</div>'
     +'<span class="ts-badge" onclick="openTsPicker(event,\''+date+'\','+idx+')">'+tsLabel+'</span>'
+    +'<div class="itin-note'+(note?'':' empty')+'" onclick="openNotePicker(event,\''+date+'\','+idx+')">'+(note||'+ note')+'</div>'
     +'</div>'
     +'<button class="itin-remove" onclick="removeFromDay(\''+date+'\','+idx+')">✕</button>'
     +'</div>';
@@ -1086,6 +1154,10 @@ function renderItinerary() {
   var list = document.getElementById('itin-list');
   if (!list) return;
   if (!days.length) { list.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic">No days found.</div>'; return; }
+  var scheduledIds = new Set();
+  days.forEach(function(d){ (itin[d]||[]).forEach(function(i){scheduledIds.add(i.placeId);}); });
+  var unscheduled = (TRIP.places||[]).filter(function(p){return !scheduledIds.has(p.id);});
+
   list.innerHTML = days.map(function(date) {
     var items = itin[date]||[];
     var isActive = activeDay===date;
@@ -1098,9 +1170,33 @@ function renderItinerary() {
       +(items.length ? items.map(function(item,idx){return renderItinItem(item,date,idx);}).join('') : '<div class="day-empty">No stops yet — click a place on the map.</div>')
       +'</div>'
       +'</div>';
-  }).join('');
+  }).join('')
+  + (unscheduled.length ? renderUnscheduled(unscheduled) : '');
   attachDragHandlers();
 }
+
+function renderUnscheduled(places) {
+  return '<div class="unscheduled-section">'
+    +'<div class="unscheduled-header" onclick="toggleUnscheduled()">'
+    +'<div class="unscheduled-title">Unscheduled</div>'
+    +'<span class="unscheduled-count">'+places.length+'</span>'
+    +'</div>'
+    +'<div class="unscheduled-items" id="unscheduled-items">'
+    +places.map(function(p){
+      var cfg=TYPE_CONFIG[p.type]||{color:'#aaa'};
+      return '<div class="unscheduled-item" onclick="selectPlace('+p.id+')">'
+        +'<div class="unscheduled-color-bar" style="background:'+cfg.color+'"></div>'
+        +'<div class="unscheduled-name">'+(p.must?'⭐ ':'')+p.name+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>'
+    +'</div>';
+}
+
+window.toggleUnscheduled = function() {
+  var el=document.getElementById('unscheduled-items');
+  if(el) el.style.display=el.style.display==='none'?'':'none';
+};
 
 function attachDragHandlers() {
   document.querySelectorAll('.itin-item').forEach(function(el) {
@@ -1241,6 +1337,41 @@ window.openTsPicker = function(e, date, idx) {
 };
 
 function closeTsPicker() { if(tsPicker){tsPicker.remove();tsPicker=null;} }
+
+window.openNotePicker = function(e, date, idx) {
+  e.stopPropagation();
+  closeNotePicker();
+  var item=((TRIP.itinerary||{})[date]||[])[idx];
+  if (!item) return;
+  var rect=e.target.getBoundingClientRect();
+  var picker=document.createElement('div');
+  picker.className='note-picker'; picker.id='note-picker';
+  picker.style.top=(rect.bottom+6)+'px';
+  picker.style.left=Math.min(rect.left,window.innerWidth-230)+'px';
+  var ta=document.createElement('textarea');
+  ta.className='note-picker-input';
+  ta.placeholder='Add a note…';
+  ta.value=item.note||'';
+  ta.addEventListener('input', function(){ setItinNote(date,idx,ta.value); });
+  ta.addEventListener('keydown', function(ev){ if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();closeNotePicker();} });
+  picker.appendChild(ta);
+  document.body.appendChild(picker);
+  notePicker=picker;
+  ta.focus();
+  setTimeout(function(){ document.addEventListener('click',closeNotePicker,{once:true}); },0);
+};
+
+function closeNotePicker() { if(notePicker){notePicker.remove();notePicker=null;} }
+
+var noteDebounce = null;
+window.setItinNote = function(date, idx, value) {
+  var item=((TRIP.itinerary||{})[date]||[])[idx];
+  if (!item) return;
+  item.note=value||null;
+  renderItinerary();
+  clearTimeout(noteDebounce);
+  noteDebounce = setTimeout(saveItinerary, 800);
+};
 
 window.setTimeSlot = function(date, idx, slot, customTime) {
   var item=((TRIP.itinerary||{})[date]||[])[idx];
@@ -1566,7 +1697,7 @@ window.addSearchedPlace = async function(idx) {
   var name=r.displayName||'';
   var newId=Math.max.apply(null,(TRIP.places||[]).map(function(p){return p.id||0;}).concat([0]))+1;
   var place={id:newId,name:name,type:type,lat:r.location.lat(),lng:r.location.lng(),
-    address:r.formattedAddress||'',notes:name,rating:r.rating||null,must:false};
+    address:r.formattedAddress||'',notes:name,rating:r.rating||null,must:false,googlePlaceId:r.id||null};
   if(!TRIP.places) TRIP.places=[];
   TRIP.places.push(place);
   try { await updateDoc(doc(db,'trips',TRIP.id),{places:TRIP.places}); } catch(e){console.error(e);}
