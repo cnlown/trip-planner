@@ -1391,34 +1391,36 @@ document.getElementById('search-input').addEventListener('keydown', function(e){
 document.getElementById('chat-input').addEventListener('keydown', function(e){ if(e.key==='Enter') sendChat(); });
 
 // ── GOOGLE PLACES SEARCH ──
-window.doPlacesSearch = function() {
+window.doPlacesSearch = async function() {
   var q = document.getElementById('search-input').value.trim();
   if (!q || !TRIP) return;
   var btn = document.getElementById('search-btn');
   btn.disabled=true; btn.textContent='Searching…';
   document.getElementById('search-results').innerHTML='<div class="search-empty">Searching…</div>';
-  var service = new google.maps.places.PlacesService(document.getElementById('map'));
   var hotelPlace = (TRIP.places||[]).find(function(p){return p.type==='hotel';});
-  var loc = hotelPlace ? new google.maps.LatLng(hotelPlace.lat,hotelPlace.lng) : new google.maps.LatLng(29.95,-90.07);
-  service.textSearch({query:q, location:loc, radius:10000}, function(results,status) {
+  var center = hotelPlace ? {lat:hotelPlace.lat,lng:hotelPlace.lng} : {lat:29.95,lng:-90.07};
+  try {
+    var {places} = await google.maps.places.Place.searchByText({
+      textQuery: q,
+      fields: ['displayName','formattedAddress','location','types','rating','id'],
+      locationBias: {center: center, radius: 10000},
+      maxResultCount: 12
+    });
     btn.disabled=false; btn.textContent='Search';
-    if (status!==google.maps.places.PlacesServiceStatus.OK||!results||!results.length) {
-      var msg = status==='REQUEST_DENIED' ? 'Places API key error — check Google Cloud Console billing/restrictions.'
-              : status==='OVER_QUERY_LIMIT' ? 'Query limit exceeded — try again shortly.'
-              : status==='ZERO_RESULTS' || !results||!results.length ? 'No results found. Try a different search.'
-              : 'Search error: '+status;
-      document.getElementById('search-results').innerHTML='<div class="search-empty">'+msg+'</div>';
+    if (!places||!places.length) {
+      document.getElementById('search-results').innerHTML='<div class="search-empty">No results found. Try a different search.</div>';
       return;
     }
-    searchResultsCache = results.slice(0,12);
+    searchResultsCache = places;
     var existing = new Set((TRIP.places||[]).map(function(p){return p.name.toLowerCase();}));
     document.getElementById('search-results').innerHTML = searchResultsCache.map(function(r,i) {
       var type=gTypeToOurType(r.types); var cfg=TYPE_CONFIG[type]||{color:'#aaa',emoji:'📍',label:'Place'};
-      var isAdded=existing.has((r.name||'').toLowerCase());
+      var name=r.displayName||'';
+      var isAdded=existing.has(name.toLowerCase());
       return '<div class="place-result-card">'
         +'<div class="place-result-info">'
-        +'<div class="place-result-name">'+esc(r.name)+'</div>'
-        +'<div class="place-result-addr">'+esc(r.formatted_address||r.vicinity||'')+'</div>'
+        +'<div class="place-result-name">'+esc(name)+'</div>'
+        +'<div class="place-result-addr">'+esc(r.formattedAddress||'')+'</div>'
         +'<div class="place-result-meta">'
         +'<span class="place-result-type" style="background:'+cfg.color+'">'+cfg.emoji+' '+cfg.label+'</span>'
         +(r.rating?'<span class="place-result-rating">⭐ '+r.rating+'</span>':'')
@@ -1427,7 +1429,10 @@ window.doPlacesSearch = function() {
         (isAdded?'✓ Added':'+ Add')+'</button>'
         +'</div>';
     }).join('');
-  });
+  } catch(e) {
+    btn.disabled=false; btn.textContent='Search';
+    document.getElementById('search-results').innerHTML='<div class="search-empty">Search error: '+esc(e.message||String(e))+'</div>';
+  }
 };
 
 function gTypeToOurType(types) {
@@ -1442,11 +1447,12 @@ function gTypeToOurType(types) {
 
 window.addSearchedPlace = async function(idx) {
   var r = searchResultsCache[idx];
-  if (!r||!r.geometry) return;
+  if (!r||!r.location) return;
   var type=gTypeToOurType(r.types);
+  var name=r.displayName||'';
   var newId=Math.max.apply(null,(TRIP.places||[]).map(function(p){return p.id||0;}).concat([0]))+1;
-  var place={id:newId,name:r.name,type:type,lat:r.geometry.location.lat(),lng:r.geometry.location.lng(),
-    address:r.formatted_address||r.vicinity||'',notes:r.name,rating:r.rating||null,must:false};
+  var place={id:newId,name:name,type:type,lat:r.location.lat(),lng:r.location.lng(),
+    address:r.formattedAddress||'',notes:name,rating:r.rating||null,must:false};
   if(!TRIP.places) TRIP.places=[];
   TRIP.places.push(place);
   try { await updateDoc(doc(db,'trips',TRIP.id),{places:TRIP.places}); } catch(e){console.error(e);}
