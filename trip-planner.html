@@ -748,7 +748,7 @@ function renderTripSelector(user, trips) {
 
   const active = trips.filter(t => !t.archived);
   const archived = trips.filter(t => t.archived);
-  const visible = showingArchived ? trips : active;
+  const visible = showingArchived ? archived : active;
 
   visible.forEach(trip => {
     const card = document.createElement('div');
