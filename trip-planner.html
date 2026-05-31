@@ -122,6 +122,61 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .res-card:hover .res-delete-btn { opacity:0.6; }
 .res-delete-btn:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); opacity:1 !important; }
 
+/* ── FIND PLACES MODAL ── */
+.find-modal { max-width:700px; height:80vh; }
+.find-modal .modal-body { padding:0; overflow:hidden; display:flex; flex-direction:column; }
+.find-tab-panel { display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0; }
+.find-tab-panel.active { display:flex; }
+.search-bar { display:flex; gap:8px; padding:14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.search-input { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; padding:9px 12px; border-radius:8px; outline:none; }
+.search-input:focus { border-color:var(--hotel); }
+.search-input::placeholder { color:var(--muted); }
+.search-btn { background:var(--hotel); border:none; color:#0f0e0c; font-weight:600; font-family:'DM Sans',sans-serif; font-size:13px; padding:9px 18px; border-radius:8px; cursor:pointer; white-space:nowrap; transition:background 0.15s; }
+.search-btn:hover { background:#d4a53a; }
+.search-btn:disabled { background:#444; color:#888; cursor:not-allowed; }
+.search-results { flex:1; overflow-y:auto; padding:10px; }
+.search-results::-webkit-scrollbar { width:3px; }
+.search-results::-webkit-scrollbar-thumb { background:var(--border); }
+.place-result-card { display:flex; align-items:center; gap:12px; padding:11px 13px; border:1px solid var(--border); border-radius:10px; margin-bottom:7px; background:rgba(255,255,255,0.02); transition:border-color 0.15s; }
+.place-result-card:hover { border-color:rgba(232,184,75,0.3); }
+.place-result-info { flex:1; min-width:0; }
+.place-result-name { font-size:13px; font-weight:500; color:var(--text); margin-bottom:3px; }
+.place-result-addr { font-size:11px; color:var(--muted); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.place-result-meta { display:flex; align-items:center; gap:8px; }
+.place-result-type { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; color:#0f0e0c; }
+.place-result-rating { font-size:11px; color:var(--hotel); }
+.place-result-add { background:rgba(232,184,75,0.1); border:1px solid rgba(232,184,75,0.3); color:var(--hotel); font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif; padding:6px 14px; border-radius:7px; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:all 0.15s; }
+.place-result-add:hover:not(:disabled) { background:rgba(232,184,75,0.2); }
+.place-result-add.added { background:rgba(92,232,122,0.1); border-color:rgba(92,232,122,0.3); color:#5ce87a; cursor:default; }
+.search-empty { padding:40px 20px; text-align:center; color:var(--muted); font-size:13px; font-style:italic; }
+.chat-messages { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.chat-messages::-webkit-scrollbar { width:3px; }
+.chat-messages::-webkit-scrollbar-thumb { background:var(--border); }
+.chat-msg { display:flex; flex-direction:column; max-width:88%; }
+.chat-msg.user { align-self:flex-end; align-items:flex-end; }
+.chat-msg.assistant { align-self:flex-start; align-items:flex-start; }
+.chat-bubble { padding:10px 13px; border-radius:12px; font-size:12.5px; line-height:1.65; white-space:pre-wrap; }
+.chat-msg.user .chat-bubble { background:rgba(232,184,75,0.13); border:1px solid rgba(232,184,75,0.25); color:var(--text); border-radius:12px 12px 3px 12px; }
+.chat-msg.assistant .chat-bubble { background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--text); border-radius:12px 12px 12px 3px; }
+.chat-msg.assistant .chat-bubble.thinking { color:var(--muted); font-style:italic; }
+.chat-place-cards { display:flex; flex-direction:column; gap:6px; margin-top:8px; width:min(460px,100%); }
+.chat-place-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; }
+.chat-place-card-info { flex:1; min-width:0; }
+.chat-place-card-name { font-size:12px; font-weight:600; color:var(--text); margin-bottom:2px; }
+.chat-place-card-addr { font-size:10px; color:var(--muted); margin-bottom:4px; }
+.chat-place-card-notes { font-size:11px; color:var(--muted); line-height:1.5; }
+.chat-place-card-add { background:rgba(232,184,75,0.1); border:1px solid rgba(232,184,75,0.3); color:var(--hotel); font-size:11px; font-weight:600; font-family:'DM Sans',sans-serif; padding:5px 12px; border-radius:6px; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:all 0.15s; }
+.chat-place-card-add:hover:not(:disabled) { background:rgba(232,184,75,0.2); }
+.chat-place-card-add.added { background:rgba(92,232,122,0.1); border-color:rgba(92,232,122,0.3); color:#5ce87a; cursor:default; }
+.chat-input-bar { padding:12px 14px; border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; }
+.no-key-setup { padding:20px; }
+.no-key-setup p { font-size:12.5px; color:var(--muted); margin-bottom:12px; line-height:1.7; }
+.no-key-input { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; padding:9px 12px; border-radius:8px; outline:none; margin-bottom:10px; box-sizing:border-box; }
+.no-key-input:focus { border-color:var(--hotel); }
+.no-key-save { background:var(--hotel); border:none; color:#0f0e0c; font-weight:600; font-family:'DM Sans',sans-serif; font-size:13px; padding:9px 20px; border-radius:8px; cursor:pointer; }
+.chat-key-link { font-size:10px; color:var(--muted); text-decoration:underline; cursor:pointer; padding:4px 0; display:inline-block; }
+.chat-key-link:hover { color:var(--text); }
+
 /* ── MOBILE ── */
 .panel-handle { display:none; justify-content:center; padding:10px 0 4px; cursor:pointer; flex-shrink:0; }
 .panel-handle-bar { width:36px; height:4px; background:var(--border); border-radius:2px; }
@@ -321,6 +376,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
     <p id="header-subtitle"></p>
   </div>
   <div class="header-right">
+    <button class="header-btn gold" onclick="openFindModal()">🔍 Find Places</button>
     <button class="header-btn gold" onclick="openModal()">✈️ Trip Details</button>
     <button class="header-btn ghost" onclick="showTripSelector()">↩ Trips</button>
     <div class="filters" id="filters">
@@ -413,11 +469,43 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
   </div>
 </div>
 
+<!-- FIND PLACES MODAL -->
+<div class="modal-overlay" id="find-modal-overlay">
+  <div class="modal find-modal">
+    <div class="modal-header">
+      <div><h2>🔍 Find Places</h2><p>Search Google or ask Claude for recommendations</p></div>
+      <button class="modal-close-btn" onclick="closeFindModal()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-find-tab="search">🔍 Search</button>
+      <button class="modal-tab" data-find-tab="claude">✨ Ask Claude</button>
+    </div>
+    <div class="modal-body">
+      <div class="find-tab-panel active" id="ftab-search">
+        <div class="search-bar">
+          <input class="search-input" id="search-input" placeholder="e.g. jazz bar French Quarter, brunch Marigny…">
+          <button class="search-btn" id="search-btn" onclick="doPlacesSearch()">Search</button>
+        </div>
+        <div class="search-results" id="search-results">
+          <div class="search-empty">Search for any place and add it to your trip.</div>
+        </div>
+      </div>
+      <div class="find-tab-panel" id="ftab-claude">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-bar">
+          <input class="search-input" id="chat-input" placeholder="Ask anything — best late night bars, hidden gems near hotel…">
+          <button class="search-btn" id="chat-btn" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const ALLOWED_EMAILS = ['cnlown@gmail.com', 'brooke1713@gmail.com'];
 
@@ -503,7 +591,8 @@ onAuthStateChanged(auth, async user => {
 
   show('loading-screen');
 
-  // Load trips from Firestore
+  // Load config (Anthropic key etc.) and trips in parallel
+  loadConfig();
   try {
     const snap = await getDocs(collection(db, 'trips'));
     const trips = [];
@@ -1110,6 +1199,236 @@ window.toggleMobilePanel = function() {
   if(toggle) toggle.style.display = isOpen ? '' : 'none';
 };
 
+// ── FIND PLACES MODAL ──
+var anthropicKey = null;
+var chatHistory = [];
+var chatPlaceRegistry = {};
+var chatPlaceCounter = 0;
+var searchResultsCache = [];
+
+async function loadConfig() {
+  try {
+    var snap = await getDoc(doc(db,'config','app'));
+    if (snap.exists() && snap.data().anthropicKey) anthropicKey = snap.data().anthropicKey;
+  } catch(e) {}
+}
+
+window.openFindModal = function() {
+  document.getElementById('find-modal-overlay').classList.add('show');
+  if (!anthropicKey) renderNoKeySetup(); else if (!chatHistory.length) initChatView();
+};
+window.closeFindModal = function() {
+  document.getElementById('find-modal-overlay').classList.remove('show');
+};
+document.getElementById('find-modal-overlay').addEventListener('click', function(e){ if(e.target===this) closeFindModal(); });
+
+document.querySelectorAll('[data-find-tab]').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('[data-find-tab]').forEach(function(t){t.classList.remove('active');});
+    document.querySelectorAll('.find-tab-panel').forEach(function(p){p.classList.remove('active');});
+    tab.classList.add('active');
+    document.getElementById('ftab-'+tab.dataset.findTab).classList.add('active');
+    if (tab.dataset.findTab==='claude') {
+      if (!anthropicKey) renderNoKeySetup(); else if (!chatHistory.length) initChatView();
+    }
+  });
+});
+
+document.getElementById('search-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doPlacesSearch(); });
+document.getElementById('chat-input').addEventListener('keydown', function(e){ if(e.key==='Enter') sendChat(); });
+
+// ── GOOGLE PLACES SEARCH ──
+window.doPlacesSearch = function() {
+  var q = document.getElementById('search-input').value.trim();
+  if (!q || !TRIP) return;
+  var btn = document.getElementById('search-btn');
+  btn.disabled=true; btn.textContent='Searching…';
+  document.getElementById('search-results').innerHTML='<div class="search-empty">Searching…</div>';
+  var service = new google.maps.places.PlacesService(document.getElementById('map'));
+  var hotelPlace = (TRIP.places||[]).find(function(p){return p.type==='hotel';});
+  var loc = hotelPlace ? new google.maps.LatLng(hotelPlace.lat,hotelPlace.lng) : new google.maps.LatLng(29.95,-90.07);
+  service.textSearch({query:q, location:loc, radius:10000}, function(results,status) {
+    btn.disabled=false; btn.textContent='Search';
+    if (status!==google.maps.places.PlacesServiceStatus.OK||!results||!results.length) {
+      document.getElementById('search-results').innerHTML='<div class="search-empty">No results found. Try a different search.</div>';
+      return;
+    }
+    searchResultsCache = results.slice(0,12);
+    var existing = new Set((TRIP.places||[]).map(function(p){return p.name.toLowerCase();}));
+    document.getElementById('search-results').innerHTML = searchResultsCache.map(function(r,i) {
+      var type=gTypeToOurType(r.types); var cfg=TYPE_CONFIG[type]||{color:'#aaa',emoji:'📍',label:'Place'};
+      var isAdded=existing.has((r.name||'').toLowerCase());
+      return '<div class="place-result-card">'
+        +'<div class="place-result-info">'
+        +'<div class="place-result-name">'+esc(r.name)+'</div>'
+        +'<div class="place-result-addr">'+esc(r.formatted_address||r.vicinity||'')+'</div>'
+        +'<div class="place-result-meta">'
+        +'<span class="place-result-type" style="background:'+cfg.color+'">'+cfg.emoji+' '+cfg.label+'</span>'
+        +(r.rating?'<span class="place-result-rating">⭐ '+r.rating+'</span>':'')
+        +'</div></div>'
+        +'<button class="place-result-add'+(isAdded?' added':'')+'" onclick="addSearchedPlace('+i+')" '+(isAdded?'disabled':'')+'>'+
+        (isAdded?'✓ Added':'+ Add')+'</button>'
+        +'</div>';
+    }).join('');
+  });
+};
+
+function gTypeToOurType(types) {
+  if (!types||!types.length) return 'activity';
+  var t=types.join(' ');
+  if (/restaurant|food|cafe|bakery|meal/.test(t)) return 'restaurant';
+  if (/bar|night_club|liquor/.test(t)) return 'bar';
+  if (/lodging/.test(t)) return 'hotel';
+  if (/store|shop|mall|clothing|jewelry/.test(t)) return 'shopping';
+  return 'activity';
+}
+
+window.addSearchedPlace = async function(idx) {
+  var r = searchResultsCache[idx];
+  if (!r||!r.geometry) return;
+  var type=gTypeToOurType(r.types);
+  var newId=Math.max.apply(null,(TRIP.places||[]).map(function(p){return p.id||0;}).concat([0]))+1;
+  var place={id:newId,name:r.name,type:type,lat:r.geometry.location.lat(),lng:r.geometry.location.lng(),
+    address:r.formatted_address||r.vicinity||'',notes:r.name,rating:r.rating||null,must:false};
+  if(!TRIP.places) TRIP.places=[];
+  TRIP.places.push(place);
+  try { await updateDoc(doc(db,'trips',TRIP.id),{places:TRIP.places}); } catch(e){console.error(e);}
+  var m=new google.maps.Marker({position:{lat:place.lat,lng:place.lng},map,icon:makeIcon(place.type,false),title:place.name,zIndex:1});
+  m.addListener('click',function(){selectPlace(place.id);});
+  markers[place.id]=m;
+  renderList();
+  map.panTo({lat:place.lat,lng:place.lng});
+  var btns=document.querySelectorAll('.place-result-add');
+  if(btns[idx]){btns[idx].textContent='✓ Added';btns[idx].classList.add('added');btns[idx].disabled=true;}
+};
+
+// ── CLAUDE CHAT ──
+function buildSysPrompt() {
+  var h=TRIP.hotel?TRIP.hotel.name+' ('+TRIP.hotel.address+')':'their hotel';
+  return 'You are a local travel expert for: '+TRIP.title+'.\nTravelers: '+(TRIP.travelers||'')+'. Dates: '+(TRIP.dates||'')+'. Staying at: '+h+'.\n\n'
+    +'When you recommend specific places, embed each one inline using EXACTLY this format:\n'
+    +'<place>{"name":"...","type":"restaurant","lat":0.0,"lng":0.0,"address":"...","notes":"...","rating":4.5,"must":false}</place>\n\n'
+    +'Valid types: restaurant, bar, rooftop, activity, shopping\n'
+    +'Rules: accurate coordinates only; notes = 1-2 punchy local-tip sentences; must:true only for truly exceptional; max 5 places per reply. Be concise and conversational.';
+}
+
+function parseChatPlaces(text) {
+  var places=[],re=/<place>([\s\S]*?)<\/place>/g,m;
+  while((m=re.exec(text))!==null){try{places.push(JSON.parse(m[1]));}catch(e){}}
+  return places;
+}
+
+function stripPlaceTags(text) {
+  return text.replace(/<place>[\s\S]*?<\/place>/g,'').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderNoKeySetup() {
+  document.getElementById('chat-messages').innerHTML =
+    '<div class="no-key-setup">'
+    +'<p>To use AI recommendations, enter your Anthropic API key. It\'s stored in Firestore and never in the app code — only you can access it after signing in.</p>'
+    +'<p>Get a key at <strong>console.anthropic.com</strong> → API Keys.</p>'
+    +'<input class="no-key-input" id="api-key-input" type="password" placeholder="sk-ant-api03-…">'
+    +'<button class="no-key-save" onclick="saveApiKey()">Save Key & Start Chatting</button>'
+    +'</div>';
+}
+
+window.saveApiKey = async function() {
+  var key=(document.getElementById('api-key-input')||{}).value||'';
+  if(!key.startsWith('sk-')){document.getElementById('api-key-input').style.borderColor='#e85c4a';return;}
+  try {
+    await setDoc(doc(db,'config','app'),{anthropicKey:key},{merge:true});
+    anthropicKey=key;
+    initChatView();
+  } catch(e){alert('Could not save key: '+e.message);}
+};
+
+function initChatView() {
+  chatHistory=[];
+  document.getElementById('chat-messages').innerHTML=
+    '<div class="chat-msg assistant"><div class="chat-bubble">Hi! I know your trip details and can suggest great spots. Try asking:<br><br>'
+    +'• "Best late-night bars near the hotel"<br>'
+    +'• "Hidden gem restaurants locals love"<br>'
+    +'• "What should we do on our anniversary Dec 29?"</div></div>'
+    +'<div style="text-align:right;padding:4px 2px"><span class="chat-key-link" onclick="renderNoKeySetup()">Change API key</span></div>';
+}
+
+window.sendChat = async function() {
+  if(!anthropicKey){renderNoKeySetup();return;}
+  if(!TRIP) return;
+  var input=document.getElementById('chat-input');
+  var text=(input.value||'').trim(); if(!text) return;
+  input.value='';
+  var btn=document.getElementById('chat-btn');
+  btn.disabled=true; btn.textContent='…';
+  var msgsEl=document.getElementById('chat-messages');
+  msgsEl.innerHTML+='<div class="chat-msg user"><div class="chat-bubble">'+esc(text)+'</div></div>'
+    +'<div class="chat-msg assistant" id="thinking-msg"><div class="chat-bubble thinking">Thinking…</div></div>';
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  chatHistory.push({role:'user',content:text});
+  try {
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'x-api-key':anthropicKey,'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true','content-type':'application/json'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,system:buildSysPrompt(),messages:chatHistory})
+    });
+    var data=await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'API error '+res.status);
+    var reply=data.content[0].text;
+    chatHistory.push({role:'assistant',content:reply});
+    var places=parseChatPlaces(reply);
+    var cleanText=stripPlaceTags(reply);
+    var existing=new Set((TRIP.places||[]).map(function(p){return p.name.toLowerCase();}));
+    var placeCardsHtml='';
+    if(places.length){
+      placeCardsHtml='<div class="chat-place-cards">'+places.map(function(p){
+        var pid='cp'+(++chatPlaceCounter); chatPlaceRegistry[pid]=p;
+        var cfg=TYPE_CONFIG[p.type]||{color:'#aaa',emoji:'📍',label:'Place'};
+        var isAdded=existing.has((p.name||'').toLowerCase());
+        return '<div class="chat-place-card">'
+          +'<div class="chat-place-card-info">'
+          +'<div class="chat-place-card-name"><span style="background:'+cfg.color+';color:#0f0e0c;padding:1px 7px;border-radius:8px;font-size:9px;font-weight:700;margin-right:5px">'+cfg.emoji+' '+cfg.label+'</span>'+esc(p.name)+'</div>'
+          +'<div class="chat-place-card-addr">'+esc(p.address)+'</div>'
+          +'<div class="chat-place-card-notes">'+esc(p.notes)+'</div>'
+          +'</div>'
+          +'<button class="chat-place-card-add'+(isAdded?' added':'')+'" onclick="addChatPlace(\''+pid+'\')" '+(isAdded?'disabled':'')+'>'+
+          (isAdded?'✓ Added':'+ Add')+'</button>'
+          +'</div>';
+      }).join('')+'</div>';
+    }
+    var thinking=document.getElementById('thinking-msg');
+    if(thinking){
+      thinking.innerHTML='<div class="chat-bubble">'+esc(cleanText)+'</div>'+placeCardsHtml;
+      thinking.removeAttribute('id');
+    }
+  } catch(e){
+    var t=document.getElementById('thinking-msg');
+    if(t){t.innerHTML='<div class="chat-bubble" style="color:#e85c4a">'+esc(e.message)+'</div>';t.removeAttribute('id');}
+  }
+  btn.disabled=false; btn.textContent='Send';
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+};
+
+window.addChatPlace = async function(pid) {
+  var place=chatPlaceRegistry[pid]; if(!place||!TRIP) return;
+  var newId=Math.max.apply(null,(TRIP.places||[]).map(function(p){return p.id||0;}).concat([0]))+1;
+  var entry=Object.assign({},place,{id:newId,must:!!place.must});
+  if(!TRIP.places) TRIP.places=[];
+  TRIP.places.push(entry);
+  try { await updateDoc(doc(db,'trips',TRIP.id),{places:TRIP.places}); } catch(e){console.error(e);}
+  var m=new google.maps.Marker({position:{lat:entry.lat,lng:entry.lng},map,icon:makeIcon(entry.type,false),title:entry.name,zIndex:1});
+  m.addListener('click',function(){selectPlace(entry.id);});
+  markers[entry.id]=m; renderList();
+  map.panTo({lat:entry.lat,lng:entry.lng});
+  document.querySelectorAll('.chat-place-card-add').forEach(function(btn){
+    if(btn.getAttribute('onclick')==="addChatPlace('"+pid+"')"){
+      btn.textContent='✓ Added';btn.classList.add('added');btn.disabled=true;
+    }
+  });
+};
+
 // ── DELETE PLACE ──
 window.promptDeletePlace = function(id) {
   pendingDeleteId = id;
@@ -1168,6 +1487,6 @@ document.getElementById('modal-overlay').addEventListener('click',function(e){if
 </script>
 
 <!-- GOOGLE MAPS -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUijYleDtGgjvT9_AJJyKB9zGJXcK09Do&callback=initMap" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUijYleDtGgjvT9_AJJyKB9zGJXcK09Do&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>
