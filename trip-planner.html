@@ -122,6 +122,30 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .res-card:hover .res-delete-btn { opacity:0.6; }
 .res-delete-btn:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); opacity:1 !important; }
 
+/* ── NEW TRIP FORM ── */
+.new-trip-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9500; display:none; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(4px); }
+.new-trip-overlay.show { display:flex; }
+.new-trip-modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:480px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.7); animation:modalIn 0.2s ease; }
+.new-trip-body { overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; }
+.new-trip-body::-webkit-scrollbar { width:3px; }
+.new-trip-body::-webkit-scrollbar-thumb { background:var(--border); }
+.nt-section-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px; }
+.nt-row { display:flex; gap:8px; }
+.nt-input { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; padding:9px 11px; border-radius:8px; outline:none; min-width:0; }
+.nt-input:focus { border-color:var(--hotel); }
+.nt-input::placeholder { color:var(--muted); }
+.nt-emoji-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:2px; }
+.nt-emoji-btn { width:34px; height:34px; border-radius:8px; border:1.5px solid var(--border); background:transparent; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; }
+.nt-emoji-btn:hover { border-color:var(--hotel); background:rgba(232,184,75,0.08); }
+.nt-emoji-btn.selected { border-color:var(--hotel); background:rgba(232,184,75,0.15); }
+.nt-divider { border:none; border-top:1px solid var(--border); margin:2px 0; }
+.nt-footer { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:10px; flex-shrink:0; }
+.nt-create-btn { flex:1; background:var(--hotel); border:none; color:#0f0e0c; font-weight:700; font-family:'DM Sans',sans-serif; font-size:14px; padding:11px; border-radius:9px; cursor:pointer; transition:background 0.15s; }
+.nt-create-btn:hover { background:#d4a53a; }
+.nt-create-btn:disabled { background:#444; color:#888; cursor:not-allowed; }
+.nt-cancel-btn { background:transparent; border:1px solid var(--border); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; padding:11px 20px; border-radius:9px; cursor:pointer; transition:all 0.15s; }
+.nt-cancel-btn:hover { color:var(--text); border-color:var(--muted); }
+
 /* ── FIND PLACES MODAL ── */
 .find-modal { max-width:700px; height:80vh; }
 .find-modal .modal-body { padding:0; overflow:hidden; display:flex; flex-direction:column; }
@@ -361,7 +385,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
   <h1>Your Trips</h1>
   <p>Select a trip to open it on the map.</p>
   <div class="trip-cards" id="trip-cards">
-    <div class="trip-card new-trip-card" onclick="alert('Coming soon — ask Claude to create a new trip JSON!')">
+    <div class="trip-card new-trip-card" onclick="openNewTripModal()">
       <div class="tc-emoji">➕</div>
       <div class="tc-title">New Trip</div>
       <div class="tc-dates">Coming soon</div>
@@ -469,6 +493,70 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
   </div>
 </div>
 
+<!-- NEW TRIP MODAL -->
+<div class="new-trip-overlay" id="new-trip-overlay">
+  <div class="new-trip-modal">
+    <div class="modal-header">
+      <div><h2>🗺️ New Trip</h2><p>Set up the basics — add places and details after</p></div>
+      <button class="modal-close-btn" onclick="closeNewTripModal()">✕</button>
+    </div>
+    <div class="new-trip-body">
+      <div>
+        <div class="nt-section-label">Emoji</div>
+        <div class="nt-emoji-row" id="nt-emoji-row">
+          <button class="nt-emoji-btn selected" data-emoji="🗺️" onclick="selectEmoji(this)">🗺️</button>
+          <button class="nt-emoji-btn" data-emoji="✈️" onclick="selectEmoji(this)">✈️</button>
+          <button class="nt-emoji-btn" data-emoji="🎷" onclick="selectEmoji(this)">🎷</button>
+          <button class="nt-emoji-btn" data-emoji="🏖️" onclick="selectEmoji(this)">🏖️</button>
+          <button class="nt-emoji-btn" data-emoji="🏔️" onclick="selectEmoji(this)">🏔️</button>
+          <button class="nt-emoji-btn" data-emoji="🌆" onclick="selectEmoji(this)">🌆</button>
+          <button class="nt-emoji-btn" data-emoji="🎭" onclick="selectEmoji(this)">🎭</button>
+          <button class="nt-emoji-btn" data-emoji="🍕" onclick="selectEmoji(this)">🍕</button>
+          <button class="nt-emoji-btn" data-emoji="🎰" onclick="selectEmoji(this)">🎰</button>
+          <button class="nt-emoji-btn" data-emoji="⛷️" onclick="selectEmoji(this)">⛷️</button>
+        </div>
+      </div>
+      <div>
+        <div class="nt-section-label">Trip Title</div>
+        <input class="nt-input" id="nt-title" placeholder="e.g. Nashville, June 2027">
+      </div>
+      <div class="nt-row">
+        <div style="flex:1">
+          <div class="nt-section-label">Travelers</div>
+          <input class="nt-input" id="nt-travelers" placeholder="Chad & Brooke Lown" value="Chad & Brooke Lown">
+        </div>
+        <div style="flex:1">
+          <div class="nt-section-label">Dates</div>
+          <input class="nt-input" id="nt-dates" placeholder="Jun 12–16, 2027">
+        </div>
+      </div>
+      <hr class="nt-divider">
+      <div>
+        <div class="nt-section-label">Hotel Name</div>
+        <input class="nt-input" id="nt-hotel-name" placeholder="e.g. Graduate Nashville">
+      </div>
+      <div>
+        <div class="nt-section-label">Hotel Address</div>
+        <input class="nt-input" id="nt-hotel-addr" placeholder="e.g. 101 20th Ave N, Nashville, TN">
+      </div>
+      <div class="nt-row">
+        <div style="flex:1">
+          <div class="nt-section-label">Check-in</div>
+          <input class="nt-input" id="nt-checkin" placeholder="Thursday, June 12 at 3:00 PM">
+        </div>
+        <div style="flex:1">
+          <div class="nt-section-label">Check-out</div>
+          <input class="nt-input" id="nt-checkout" placeholder="Monday, June 16 at 11:00 AM">
+        </div>
+      </div>
+    </div>
+    <div class="nt-footer">
+      <button class="nt-cancel-btn" onclick="closeNewTripModal()">Cancel</button>
+      <button class="nt-create-btn" id="nt-create-btn" onclick="createTrip()">Create Trip →</button>
+    </div>
+  </div>
+</div>
+
 <!-- FIND PLACES MODAL -->
 <div class="modal-overlay" id="find-modal-overlay">
   <div class="modal find-modal">
@@ -524,6 +612,7 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 var TRIP = null;
+var currentUser = null;
 var map, markers = {}, activeFilter = 'all', activePlace = null, activeDay = null, mapReady = false;
 var dragSrc = null, tsPicker = null, pendingDeleteId = null;
 
@@ -573,11 +662,13 @@ window.signOut = async function() {
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
+    currentUser = null;
     hideApp();
     show('login-screen');
     document.getElementById('login-error').style.display='none';
     return;
   }
+  currentUser = user;
 
   if (!ALLOWED_EMAILS.includes(user.email)) {
     await fbSignOut(auth);
@@ -630,7 +721,8 @@ function renderTripSelector(user, trips) {
   container.appendChild(newCard || (() => {
     const c = document.createElement('div');
     c.className='trip-card new-trip-card';
-    c.innerHTML='<div class="tc-emoji">➕</div><div class="tc-title">New Trip</div><div class="tc-dates">Coming soon</div>';
+    c.innerHTML='<div class="tc-emoji">➕</div><div class="tc-title">New Trip</div><div class="tc-dates">Tap to create</div>';
+    c.onclick=openNewTripModal;
     return c;
   })());
 
@@ -1198,6 +1290,68 @@ window.toggleMobilePanel = function() {
   backdrop.classList.toggle('show', !isOpen);
   if(toggle) toggle.style.display = isOpen ? '' : 'none';
 };
+
+// ── NEW TRIP ──
+var selectedEmoji = '🗺️';
+
+window.openNewTripModal = function() {
+  selectedEmoji = '🗺️';
+  document.querySelectorAll('.nt-emoji-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.emoji==='🗺️'); });
+  ['nt-title','nt-dates','nt-hotel-name','nt-hotel-addr','nt-checkin','nt-checkout'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('nt-travelers').value='Chad & Brooke Lown';
+  document.getElementById('nt-create-btn').disabled=false;
+  document.getElementById('nt-create-btn').textContent='Create Trip →';
+  document.getElementById('new-trip-overlay').classList.add('show');
+  setTimeout(function(){ document.getElementById('nt-title').focus(); }, 100);
+};
+
+window.closeNewTripModal = function() {
+  document.getElementById('new-trip-overlay').classList.remove('show');
+};
+
+window.selectEmoji = function(btn) {
+  document.querySelectorAll('.nt-emoji-btn').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  selectedEmoji = btn.dataset.emoji;
+};
+
+window.createTrip = async function() {
+  var title = (document.getElementById('nt-title').value||'').trim();
+  if (!title) { document.getElementById('nt-title').style.borderColor='#e85c4a'; document.getElementById('nt-title').focus(); return; }
+  var btn = document.getElementById('nt-create-btn');
+  btn.disabled=true; btn.textContent='Creating…';
+  var travelers = document.getElementById('nt-travelers').value||'';
+  var dates = document.getElementById('nt-dates').value||'';
+  var hotelName = document.getElementById('nt-hotel-name').value||'';
+  var hotelAddr = document.getElementById('nt-hotel-addr').value||'';
+  var checkin = document.getElementById('nt-checkin').value||'';
+  var checkout = document.getElementById('nt-checkout').value||'';
+  var newTrip = {
+    title: title, emoji: selectedEmoji, travelers: travelers, dates: dates,
+    header_subtitle: dates + (hotelName ? ' · ' + hotelName : ''),
+    hotel: hotelName ? { name:hotelName, address:hotelAddr, checkin:checkin, checkout:checkout } : {},
+    flights: [], payment: {}, reservations: [], places: [], itinerary: {}
+  };
+  try {
+    var docRef = await addDoc(collection(db,'trips'), newTrip);
+    newTrip.id = docRef.id;
+    closeNewTripModal();
+    // Refresh trip selector then open the new trip
+    var snap = await getDocs(collection(db,'trips'));
+    var updatedTrips = [];
+    snap.forEach(function(d){ updatedTrips.push(Object.assign({id:d.id},d.data())); });
+    renderTripSelector(currentUser, updatedTrips);
+    openTrip(newTrip);
+  } catch(e) {
+    btn.disabled=false; btn.textContent='Create Trip →';
+    alert('Could not create trip: '+e.message);
+  }
+};
+
+document.getElementById('new-trip-overlay').addEventListener('click', function(e){ if(e.target===this) closeNewTripModal(); });
+document.getElementById('nt-title').addEventListener('keydown', function(e){ if(e.key==='Enter') createTrip(); });
 
 // ── FIND PLACES MODAL ──
 var anthropicKey = null;
