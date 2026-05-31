@@ -141,6 +141,10 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .nt-input { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; padding:9px 11px; border-radius:8px; outline:none; min-width:0; }
 .nt-input:focus { border-color:var(--hotel); }
 .nt-input::placeholder { color:var(--muted); }
+.nt-ac-dd { position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.6); z-index:50; overflow:hidden; display:none; }
+.nt-ac-item { padding:9px 12px; font-size:13px; color:var(--text); cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04); }
+.nt-ac-item:last-child { border-bottom:none; }
+.nt-ac-item:hover { background:rgba(232,184,75,0.12); }
 .nt-emoji-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:2px; }
 .nt-emoji-btn { width:34px; height:34px; border-radius:8px; border:1.5px solid var(--border); background:transparent; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; }
 .nt-emoji-btn:hover { border-color:var(--hotel); background:rgba(232,184,75,0.08); }
@@ -538,7 +542,10 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       </div>
       <div>
         <div class="nt-section-label">City / Destination</div>
-        <input class="nt-input" id="nt-location" placeholder="e.g. Nashville, TN" style="font-size:15px;padding:11px 13px">
+        <div style="position:relative">
+          <input class="nt-input" id="nt-location" placeholder="e.g. Nashville, TN" autocomplete="off" style="font-size:15px;padding:11px 13px;width:100%">
+          <div class="nt-ac-dd" id="nt-location-dd"></div>
+        </div>
         <div id="nt-location-status" style="font-size:12px;color:var(--muted);margin-top:5px;min-height:16px"></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:4px">
@@ -754,7 +761,6 @@ function openTrip(trip) {
   document.getElementById('modal-subtitle').textContent = (trip.travelers||'') + ' · ' + (trip.dates||'');
   showApp();
   if(mapReady) {
-    console.log('[openTrip]', trip.title, 'mapCenter:', trip.mapCenter, 'places:', (trip.places||[]).length);
     centerMapForTrip(trip);
     plotMarkers(); renderList(); buildModal(); attachFilterListeners(); attachPanelTabs(); renderItinerary();
   } else { window._pendingTrip = true; }
@@ -1323,11 +1329,80 @@ window.toggleArchiveTrip = async function(tripId, isArchived) {
   } catch(e) { console.error(e); }
 };
 
+var ntSelectedCenter = null;
+var ntAutoToken = null;
+var ntAutoTimer = null;
+var ntSuggestionCache = [];
+
+function setupNtAutocomplete() {
+  var input = document.getElementById('nt-location');
+  var dd = document.getElementById('nt-location-dd');
+  if (input.dataset.acWired) return;
+  input.dataset.acWired = '1';
+  input.addEventListener('input', function() {
+    ntSelectedCenter = null;
+    document.getElementById('nt-location-status').textContent='';
+    var q = input.value.trim();
+    clearTimeout(ntAutoTimer);
+    if (q.length < 3) { dd.style.display='none'; return; }
+    ntAutoTimer = setTimeout(function(){ fetchNtSuggestions(q); }, 250);
+  });
+  document.addEventListener('click', function(e){
+    if (!input.contains(e.target) && !dd.contains(e.target)) dd.style.display='none';
+  });
+}
+
+async function fetchNtSuggestions(q) {
+  var dd = document.getElementById('nt-location-dd');
+  try {
+    var {AutocompleteSuggestion, AutocompleteSessionToken} = await google.maps.importLibrary('places');
+    if (!ntAutoToken) ntAutoToken = new AutocompleteSessionToken();
+    var {suggestions} = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      input: q, sessionToken: ntAutoToken,
+      includedPrimaryTypes: ['locality','administrative_area_level_1','administrative_area_level_2','country']
+    });
+    if (!suggestions || !suggestions.length) { dd.style.display='none'; return; }
+    ntSuggestionCache = suggestions.slice(0,6);
+    dd.innerHTML = ntSuggestionCache.map(function(s,i){
+      return '<div class="nt-ac-item" data-idx="'+i+'">'+esc(s.placePrediction.text.text)+'</div>';
+    }).join('');
+    dd.style.display='block';
+    Array.from(dd.children).forEach(function(el){
+      el.addEventListener('click', function(){ selectNtSuggestion(parseInt(el.dataset.idx,10)); });
+    });
+  } catch(e) { dd.style.display='none'; }
+}
+
+async function selectNtSuggestion(idx) {
+  var s = ntSuggestionCache[idx];
+  if (!s) return;
+  var input = document.getElementById('nt-location');
+  var dd = document.getElementById('nt-location-dd');
+  var statusEl = document.getElementById('nt-location-status');
+  input.value = s.placePrediction.text.text;
+  dd.style.display='none';
+  try {
+    var place = s.placePrediction.toPlace();
+    await place.fetchFields({fields:['location','displayName']});
+    ntSelectedCenter = {lat: place.location.lat(), lng: place.location.lng()};
+    statusEl.style.color='#5cb85c'; statusEl.textContent='📍 '+(place.displayName||input.value);
+  } catch(e) {
+    statusEl.style.color='#e8b84b'; statusEl.textContent='Couldn’t load that location.';
+  }
+  ntAutoToken = null; // end autocomplete session after a selection
+}
+
 window.openNewTripModal = function() {
   selectedEmoji = '🗺️';
   document.querySelectorAll('.nt-emoji-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.emoji==='🗺️'); });
   var ntTitle = document.getElementById('nt-title');
   if(ntTitle) { ntTitle.value=''; ntTitle.style.borderColor=''; }
+  var ntLoc = document.getElementById('nt-location');
+  if(ntLoc) ntLoc.value='';
+  document.getElementById('nt-location-status').textContent='';
+  document.getElementById('nt-location-dd').style.display='none';
+  ntSelectedCenter = null; ntAutoToken = null;
+  setupNtAutocomplete();
   document.getElementById('nt-create-btn').disabled=false;
   document.getElementById('nt-create-btn').textContent='Create Trip →';
   document.getElementById('new-trip-overlay').classList.add('show');
@@ -1348,10 +1423,10 @@ window.createTrip = async function() {
   if (!title) { document.getElementById('nt-title').style.borderColor='#e85c4a'; document.getElementById('nt-title').focus(); return; }
   var btn = document.getElementById('nt-create-btn');
   btn.disabled=true; btn.textContent='Creating…';
-  var mapCenter = null;
+  var mapCenter = ntSelectedCenter;
   var locationVal = (document.getElementById('nt-location').value||'').trim();
   var statusEl = document.getElementById('nt-location-status');
-  if (locationVal) {
+  if (!mapCenter && locationVal) {
     statusEl.style.color='var(--muted)'; statusEl.textContent='Finding location…';
     try {
       var {Place} = await google.maps.importLibrary('places');
@@ -1366,7 +1441,6 @@ window.createTrip = async function() {
       statusEl.style.color='#e8b84b'; statusEl.textContent='Location lookup failed: '+(e.message||e);
     }
   }
-  console.log('[createTrip] location:', locationVal, '→ mapCenter:', mapCenter);
   var newTrip = {
     title: title, emoji: selectedEmoji, travelers: 'Chad & Brooke Lown', dates: '',
     header_subtitle: title, hotel: {}, flights: [], payment: {}, reservations: [], places: [], itinerary: {},
