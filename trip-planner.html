@@ -775,7 +775,7 @@ function renderTripSelector(user, trips) {
   if (archived.length) {
     const tog = document.createElement('button');
     tog.className='archived-toggle';
-    tog.textContent = showingArchived ? 'Hide archived' : '📦 '+archived.length+' archived trip'+(archived.length!==1?'s':'');
+    tog.textContent = showingArchived ? '← Back to trips' : '📦 '+archived.length+' archived trip'+(archived.length!==1?'s':'');
     tog.onclick = function(){ showingArchived=!showingArchived; renderTripSelector(user,trips); };
     container.appendChild(tog);
   }
