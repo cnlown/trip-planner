@@ -491,10 +491,10 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 
 <!-- DETAIL POPUP -->
 <div class="detail-popup" id="detail-popup">
+  <button class="popup-close" onclick="closePopup()" style="position:absolute;top:10px;right:10px;z-index:10">✕</button>
   <img class="popup-photo" id="popup-photo" alt="">
   <div class="popup-header">
     <div class="popup-name" id="popup-name"></div>
-    <button class="popup-close" onclick="closePopup()">✕</button>
   </div>
   <div class="popup-badge" id="popup-badge"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
