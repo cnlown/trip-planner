@@ -681,6 +681,7 @@ var TRIP = null;
 var currentUser = null;
 var map, markers = {}, activeFilter = 'all', activePlace = null, activeDay = null, mapReady = false;
 var dragSrc = null, tsPicker = null, notePicker = null, pendingDeleteId = null;
+var searchAcTimer = null, searchAcToken = null, searchAcCache = [], searchAcDd = null;
 var placePhotoCache = {};
 
 const TYPE_CONFIG = {
@@ -1738,11 +1739,82 @@ async function loadConfig() {
 window.openFindModal = function() {
   document.getElementById('find-modal-overlay').classList.add('show');
   if (!anthropicKey) renderNoKeySetup(); else if (!chatHistory.length) initChatView();
+  initSearchAutocomplete();
 };
 window.closeFindModal = function() {
   document.getElementById('find-modal-overlay').classList.remove('show');
+  closeSearchAcDd();
   if (typeof map !== 'undefined' && map) google.maps.event.trigger(map, 'resize');
 };
+
+function initSearchAutocomplete() {
+  var input = document.getElementById('search-input');
+  if (input._acWired) return;
+  input._acWired = true;
+  input.addEventListener('input', function() {
+    var q = input.value.trim();
+    clearTimeout(searchAcTimer);
+    if (q.length < 2) { closeSearchAcDd(); return; }
+    searchAcTimer = setTimeout(function(){ fetchSearchAcSuggestions(q); }, 250);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSearchAcDd();
+  });
+  document.addEventListener('click', function(e) {
+    if (searchAcDd && !searchAcDd.contains(e.target) && e.target !== input) closeSearchAcDd();
+  });
+}
+
+function closeSearchAcDd() {
+  if (searchAcDd) { searchAcDd.remove(); searchAcDd = null; }
+  searchAcCache = [];
+}
+
+async function fetchSearchAcSuggestions(q) {
+  try {
+    var {AutocompleteSuggestion, AutocompleteSessionToken} = await google.maps.importLibrary('places');
+    if (!searchAcToken) searchAcToken = new AutocompleteSessionToken();
+    var hotelPlace = (TRIP.places||[]).find(function(p){return p.type==='hotel';});
+    var center = hotelPlace ? {lat:hotelPlace.lat,lng:hotelPlace.lng} : (TRIP.mapCenter||null);
+    var params = {input: q, sessionToken: searchAcToken};
+    if (center) params.locationBias = {center: center, radius: 20000};
+    var {suggestions} = await AutocompleteSuggestion.fetchAutocompleteSuggestions(params);
+    if (!suggestions || !suggestions.length) { closeSearchAcDd(); return; }
+    searchAcCache = suggestions.slice(0, 6);
+    var input = document.getElementById('search-input');
+    if (!input) return;
+    var rect = input.getBoundingClientRect();
+    if (!searchAcDd) {
+      searchAcDd = document.createElement('div');
+      searchAcDd.className = 'nt-ac-dd';
+      searchAcDd.style.cssText = 'position:fixed;z-index:9999;margin:0;border-radius:8px;';
+      document.body.appendChild(searchAcDd);
+    }
+    searchAcDd.style.top = (rect.bottom + 4) + 'px';
+    searchAcDd.style.left = rect.left + 'px';
+    searchAcDd.style.width = rect.width + 'px';
+    searchAcDd.innerHTML = searchAcCache.map(function(s, i) {
+      return '<div class="nt-ac-item" data-idx="'+i+'">'+esc(s.placePrediction.text.text)+'</div>';
+    }).join('');
+    searchAcDd.style.display = 'block';
+    Array.from(searchAcDd.children).forEach(function(el) {
+      el.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        selectSearchAcSuggestion(parseInt(el.dataset.idx, 10));
+      });
+    });
+  } catch(e) { closeSearchAcDd(); }
+}
+
+function selectSearchAcSuggestion(idx) {
+  var s = searchAcCache[idx];
+  if (!s) return;
+  var input = document.getElementById('search-input');
+  input.value = s.placePrediction.text.text;
+  closeSearchAcDd();
+  searchAcToken = null;
+  doPlacesSearch();
+}
 document.getElementById('find-modal-overlay').addEventListener('click', function(e){ if(e.target===this) closeFindModal(); });
 
 document.querySelectorAll('[data-find-tab]').forEach(function(tab) {
