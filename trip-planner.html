@@ -1361,6 +1361,7 @@ async function fetchNtSuggestions(q) {
       input: q, sessionToken: ntAutoToken,
       includedPrimaryTypes: ['locality','administrative_area_level_1','administrative_area_level_2','country']
     });
+    console.log('[autocomplete] q=',q,'suggestions=',suggestions&&suggestions.length);
     if (!suggestions || !suggestions.length) { dd.style.display='none'; return; }
     ntSuggestionCache = suggestions.slice(0,6);
     dd.innerHTML = ntSuggestionCache.map(function(s,i){
@@ -1370,7 +1371,7 @@ async function fetchNtSuggestions(q) {
     Array.from(dd.children).forEach(function(el){
       el.addEventListener('click', function(){ selectNtSuggestion(parseInt(el.dataset.idx,10)); });
     });
-  } catch(e) { dd.style.display='none'; }
+  } catch(e) { console.error('[autocomplete] error:', e); dd.style.display='none'; }
 }
 
 async function selectNtSuggestion(idx) {
