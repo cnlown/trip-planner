@@ -1308,10 +1308,8 @@ window.toggleArchiveTrip = async function(tripId, isArchived) {
 window.openNewTripModal = function() {
   selectedEmoji = '🗺️';
   document.querySelectorAll('.nt-emoji-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.emoji==='🗺️'); });
-  ['nt-title','nt-dates','nt-hotel-name','nt-hotel-addr','nt-checkin','nt-checkout'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.value='';
-  });
-  document.getElementById('nt-travelers').value='Chad & Brooke Lown';
+  var ntTitle = document.getElementById('nt-title');
+  if(ntTitle) { ntTitle.value=''; ntTitle.style.borderColor=''; }
   document.getElementById('nt-create-btn').disabled=false;
   document.getElementById('nt-create-btn').textContent='Create Trip →';
   document.getElementById('new-trip-overlay').classList.add('show');
