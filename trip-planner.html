@@ -49,9 +49,9 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .trip-card-archive { position:absolute; top:7px; right:8px; background:transparent; border:none; font-size:13px; color:var(--border); cursor:pointer; opacity:0; transition:all 0.15s; padding:2px 4px; border-radius:4px; line-height:1; }
 .trip-card:hover .trip-card-archive { opacity:1; color:var(--muted); }
 .trip-card-archive:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); }
-.trip-card-delete { position:absolute; top:7px; left:8px; background:transparent; border:none; font-size:13px; color:var(--border); cursor:pointer; opacity:0; transition:all 0.15s; padding:2px 4px; border-radius:4px; line-height:1; }
-.trip-card:hover .trip-card-delete { opacity:1; color:var(--muted); }
-.trip-card-delete:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); }
+.trip-card-delete { position:absolute; top:7px; left:8px; background:transparent; border:none; font-size:13px; color:var(--muted); cursor:pointer; opacity:0.5; transition:all 0.15s; padding:2px 4px; border-radius:4px; line-height:1; }
+.trip-card:hover .trip-card-delete { opacity:1; }
+.trip-card-delete:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); opacity:1 !important; }
 .trip-card-confirm { position:absolute; inset:0; background:rgba(232,92,74,0.12); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
 .trip-card-confirm-msg { font-size:11px; color:#e85c4a; font-weight:500; }
 .trip-card-confirm-btns { display:flex; gap:6px; }
