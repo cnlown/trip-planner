@@ -39,13 +39,20 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 #trip-selector-screen h1 { font-family:'Playfair Display',serif; font-size:26px; color:var(--hotel); }
 #trip-selector-screen p { font-size:13px; color:var(--muted); text-align:center; max-width:400px; line-height:1.6; }
 .trip-cards { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:600px; }
-.trip-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 28px; cursor:pointer; transition:all 0.2s; text-align:center; min-width:160px; }
+.trip-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 28px; cursor:pointer; transition:all 0.2s; text-align:center; min-width:160px; position:relative; }
 .trip-card:hover { border-color:var(--hotel); background:rgba(232,184,75,0.05); }
 .trip-card .tc-emoji { font-size:28px; margin-bottom:8px; }
 .trip-card .tc-title { font-size:14px; font-weight:500; color:var(--text); margin-bottom:4px; }
 .trip-card .tc-dates { font-size:11px; color:var(--muted); }
 .new-trip-card { border-style:dashed; }
 .new-trip-card .tc-title { color:var(--muted); }
+.trip-card-archive { position:absolute; top:7px; right:8px; background:transparent; border:none; font-size:13px; color:var(--border); cursor:pointer; opacity:0; transition:all 0.15s; padding:2px 4px; border-radius:4px; line-height:1; }
+.trip-card:hover .trip-card-archive { opacity:1; color:var(--muted); }
+.trip-card-archive:hover { color:#e85c4a !important; background:rgba(232,92,74,0.1); }
+.trip-card.archived-card { opacity:0.45; }
+.trip-card.archived-card:hover { opacity:0.9; border-color:var(--muted); }
+.archived-toggle { font-size:12px; color:var(--muted); cursor:pointer; padding:6px 14px; border:1px solid var(--border); border-radius:14px; background:transparent; font-family:'DM Sans',sans-serif; transition:all 0.15s; margin-top:4px; }
+.archived-toggle:hover { color:var(--text); border-color:var(--muted); }
 .user-bar { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); }
 .user-bar img { width:28px; height:28px; border-radius:50%; border:1px solid var(--border); }
 .sign-out-btn { background:transparent; border:1px solid var(--border); color:var(--muted); padding:4px 10px; border-radius:12px; cursor:pointer; font-size:11px; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
@@ -502,7 +509,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
     </div>
     <div class="new-trip-body">
       <div>
-        <div class="nt-section-label">Emoji</div>
+        <div class="nt-section-label">Pick an Emoji</div>
         <div class="nt-emoji-row" id="nt-emoji-row">
           <button class="nt-emoji-btn selected" data-emoji="🗺️" onclick="selectEmoji(this)">🗺️</button>
           <button class="nt-emoji-btn" data-emoji="✈️" onclick="selectEmoji(this)">✈️</button>
@@ -514,40 +521,13 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
           <button class="nt-emoji-btn" data-emoji="🍕" onclick="selectEmoji(this)">🍕</button>
           <button class="nt-emoji-btn" data-emoji="🎰" onclick="selectEmoji(this)">🎰</button>
           <button class="nt-emoji-btn" data-emoji="⛷️" onclick="selectEmoji(this)">⛷️</button>
+          <button class="nt-emoji-btn" data-emoji="🌴" onclick="selectEmoji(this)">🌴</button>
+          <button class="nt-emoji-btn" data-emoji="🎪" onclick="selectEmoji(this)">🎪</button>
         </div>
       </div>
       <div>
-        <div class="nt-section-label">Trip Title</div>
-        <input class="nt-input" id="nt-title" placeholder="e.g. Nashville, June 2027">
-      </div>
-      <div class="nt-row">
-        <div style="flex:1">
-          <div class="nt-section-label">Travelers</div>
-          <input class="nt-input" id="nt-travelers" placeholder="Chad & Brooke Lown" value="Chad & Brooke Lown">
-        </div>
-        <div style="flex:1">
-          <div class="nt-section-label">Dates</div>
-          <input class="nt-input" id="nt-dates" placeholder="Jun 12–16, 2027">
-        </div>
-      </div>
-      <hr class="nt-divider">
-      <div>
-        <div class="nt-section-label">Hotel Name</div>
-        <input class="nt-input" id="nt-hotel-name" placeholder="e.g. Graduate Nashville">
-      </div>
-      <div>
-        <div class="nt-section-label">Hotel Address</div>
-        <input class="nt-input" id="nt-hotel-addr" placeholder="e.g. 101 20th Ave N, Nashville, TN">
-      </div>
-      <div class="nt-row">
-        <div style="flex:1">
-          <div class="nt-section-label">Check-in</div>
-          <input class="nt-input" id="nt-checkin" placeholder="Thursday, June 12 at 3:00 PM">
-        </div>
-        <div style="flex:1">
-          <div class="nt-section-label">Check-out</div>
-          <input class="nt-input" id="nt-checkout" placeholder="Monday, June 16 at 11:00 AM">
-        </div>
+        <div class="nt-section-label">Where are you going?</div>
+        <input class="nt-input" id="nt-title" placeholder="e.g. Nashville, June 2027" style="font-size:15px;padding:11px 13px">
       </div>
     </div>
     <div class="nt-footer">
@@ -696,35 +676,48 @@ onAuthStateChanged(auth, async user => {
 });
 
 // ── TRIP SELECTOR ──
+var showingArchived = false;
+
 function renderTripSelector(user, trips) {
-  // User bar
   document.getElementById('user-bar').innerHTML =
     (user.photoURL ? '<img src="'+user.photoURL+'" alt="">' : '')
     + '<span style="font-size:12px;color:var(--muted)">'+user.displayName+'</span>'
     + '<button class="sign-out-btn" onclick="signOut()">Sign out</button>';
 
-  // Trip cards
   const container = document.getElementById('trip-cards');
-  const newCard = container.querySelector('.new-trip-card');
   container.innerHTML = '';
 
-  trips.forEach(trip => {
+  const active = trips.filter(t => !t.archived);
+  const archived = trips.filter(t => t.archived);
+  const visible = showingArchived ? trips : active;
+
+  visible.forEach(trip => {
     const card = document.createElement('div');
-    card.className = 'trip-card';
+    card.className = 'trip-card' + (trip.archived ? ' archived-card' : '');
     card.innerHTML = '<div class="tc-emoji">'+(trip.emoji||'🗺️')+'</div>'
       +'<div class="tc-title">'+trip.title+'</div>'
-      +'<div class="tc-dates">'+(trip.dates||'')+'</div>';
+      +'<div class="tc-dates">'+(trip.archived ? '📦 Archived' : (trip.dates||''))+'</div>'
+      +'<button class="trip-card-archive" onclick="event.stopPropagation();toggleArchiveTrip(\''+trip.id+'\','+!!trip.archived+')" title="'+(trip.archived?'Unarchive':'Archive')+'">'
+      +(trip.archived ? '↩' : '📦')+'</button>';
     card.onclick = () => openTrip(trip);
     container.appendChild(card);
   });
 
-  container.appendChild(newCard || (() => {
-    const c = document.createElement('div');
-    c.className='trip-card new-trip-card';
-    c.innerHTML='<div class="tc-emoji">➕</div><div class="tc-title">New Trip</div><div class="tc-dates">Tap to create</div>';
-    c.onclick=openNewTripModal;
-    return c;
-  })());
+  // New trip card
+  const c = document.createElement('div');
+  c.className='trip-card new-trip-card';
+  c.innerHTML='<div class="tc-emoji">➕</div><div class="tc-title">New Trip</div><div class="tc-dates">Tap to create</div>';
+  c.onclick=openNewTripModal;
+  container.appendChild(c);
+
+  // Archived toggle
+  if (archived.length) {
+    const tog = document.createElement('button');
+    tog.className='archived-toggle';
+    tog.textContent = showingArchived ? 'Hide archived' : '📦 '+archived.length+' archived trip'+(archived.length!==1?'s':'');
+    tog.onclick = function(){ showingArchived=!showingArchived; renderTripSelector(user,trips); };
+    container.appendChild(tog);
+  }
 
   hideApp();
   show('trip-selector-screen');
@@ -1294,6 +1287,16 @@ window.toggleMobilePanel = function() {
 // ── NEW TRIP ──
 var selectedEmoji = '🗺️';
 
+window.toggleArchiveTrip = async function(tripId, isArchived) {
+  try {
+    await updateDoc(doc(db,'trips',tripId), {archived: !isArchived});
+    var snap = await getDocs(collection(db,'trips'));
+    var updatedTrips = [];
+    snap.forEach(function(d){ updatedTrips.push(Object.assign({id:d.id},d.data())); });
+    renderTripSelector(currentUser, updatedTrips);
+  } catch(e) { console.error(e); }
+};
+
 window.openNewTripModal = function() {
   selectedEmoji = '🗺️';
   document.querySelectorAll('.nt-emoji-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.emoji==='🗺️'); });
@@ -1322,23 +1325,14 @@ window.createTrip = async function() {
   if (!title) { document.getElementById('nt-title').style.borderColor='#e85c4a'; document.getElementById('nt-title').focus(); return; }
   var btn = document.getElementById('nt-create-btn');
   btn.disabled=true; btn.textContent='Creating…';
-  var travelers = document.getElementById('nt-travelers').value||'';
-  var dates = document.getElementById('nt-dates').value||'';
-  var hotelName = document.getElementById('nt-hotel-name').value||'';
-  var hotelAddr = document.getElementById('nt-hotel-addr').value||'';
-  var checkin = document.getElementById('nt-checkin').value||'';
-  var checkout = document.getElementById('nt-checkout').value||'';
   var newTrip = {
-    title: title, emoji: selectedEmoji, travelers: travelers, dates: dates,
-    header_subtitle: dates + (hotelName ? ' · ' + hotelName : ''),
-    hotel: hotelName ? { name:hotelName, address:hotelAddr, checkin:checkin, checkout:checkout } : {},
-    flights: [], payment: {}, reservations: [], places: [], itinerary: {}
+    title: title, emoji: selectedEmoji, travelers: 'Chad & Brooke Lown', dates: '',
+    header_subtitle: title, hotel: {}, flights: [], payment: {}, reservations: [], places: [], itinerary: {}
   };
   try {
     var docRef = await addDoc(collection(db,'trips'), newTrip);
     newTrip.id = docRef.id;
     closeNewTripModal();
-    // Refresh trip selector then open the new trip
     var snap = await getDocs(collection(db,'trips'));
     var updatedTrips = [];
     snap.forEach(function(d){ updatedTrips.push(Object.assign({id:d.id},d.data())); });
