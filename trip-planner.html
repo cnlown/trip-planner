@@ -1337,12 +1337,14 @@ var ntSuggestionCache = [];
 function setupNtAutocomplete() {
   var input = document.getElementById('nt-location');
   var dd = document.getElementById('nt-location-dd');
-  if (input.dataset.acWired) return;
+  if (input.dataset.acWired) { console.log('[autocomplete] already wired'); return; }
   input.dataset.acWired = '1';
+  console.log('[autocomplete] wiring input listener');
   input.addEventListener('input', function() {
     ntSelectedCenter = null;
     document.getElementById('nt-location-status').textContent='';
     var q = input.value.trim();
+    console.log('[autocomplete] input fired, q=',q);
     clearTimeout(ntAutoTimer);
     if (q.length < 3) { dd.style.display='none'; return; }
     ntAutoTimer = setTimeout(function(){ fetchNtSuggestions(q); }, 250);
