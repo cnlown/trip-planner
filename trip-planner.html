@@ -131,8 +131,11 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .unscheduled-title { font-size:12px; font-weight:600; color:var(--muted); }
 .unscheduled-count { font-size:10px; color:var(--muted); background:var(--border); padding:2px 7px; border-radius:10px; }
 .unscheduled-items { padding:4px 8px 8px; }
-.unscheduled-item { display:flex; align-items:center; gap:8px; padding:5px 4px; border-radius:6px; cursor:pointer; transition:background 0.1s; }
+.unscheduled-item { display:flex; align-items:center; gap:8px; padding:5px 4px; border-radius:6px; cursor:grab; transition:background 0.1s; }
 .unscheduled-item:hover { background:rgba(255,255,255,0.05); }
+.unscheduled-item.dragging { opacity:0.35; }
+.day-card.drop-target { border-color:var(--hotel); background:rgba(232,184,75,0.04); }
+.day-items.drop-target { outline:1px dashed rgba(232,184,75,0.4); outline-offset:-2px; border-radius:4px; }
 .unscheduled-color-bar { width:3px; height:22px; border-radius:2px; flex-shrink:0; }
 .unscheduled-name { font-size:11.5px; color:var(--muted); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
@@ -1184,7 +1187,8 @@ function renderUnscheduled(places) {
     +'<div class="unscheduled-items" id="unscheduled-items">'
     +places.map(function(p){
       var cfg=TYPE_CONFIG[p.type]||{color:'#aaa'};
-      return '<div class="unscheduled-item" onclick="selectPlace('+p.id+')">'
+      return '<div class="unscheduled-item" draggable="true" data-place-id="'+p.id+'" onclick="selectPlace('+p.id+')">'
+        +'<span class="drag-handle" style="color:var(--border);font-size:13px;user-select:none">⠿</span>'
         +'<div class="unscheduled-color-bar" style="background:'+cfg.color+'"></div>'
         +'<div class="unscheduled-name">'+(p.must?'⭐ ':'')+p.name+'</div>'
         +'</div>';
@@ -1198,33 +1202,90 @@ window.toggleUnscheduled = function() {
   if(el) el.style.display=el.style.display==='none'?'':'none';
 };
 
+function clearDragHighlights() {
+  document.querySelectorAll('.itin-item').forEach(function(i){i.classList.remove('dragging','drag-over');});
+  document.querySelectorAll('.day-card,.day-items').forEach(function(i){i.classList.remove('drop-target');});
+  document.querySelectorAll('.unscheduled-item').forEach(function(i){i.classList.remove('dragging');});
+}
+
+function addUnscheduledToDay(placeId, date, atIdx) {
+  if (!TRIP.itinerary) TRIP.itinerary = {};
+  if (!TRIP.itinerary[date]) TRIP.itinerary[date] = [];
+  if (TRIP.itinerary[date].some(function(i){return i.placeId===placeId;})) return;
+  var newItem = {placeId:placeId, timeSlot:null, customTime:null};
+  if (atIdx !== null) TRIP.itinerary[date].splice(atIdx, 0, newItem);
+  else TRIP.itinerary[date].push(newItem);
+  saveItinerary(); renderItinerary();
+}
+
 function attachDragHandlers() {
+  // ── scheduled items: drag to reorder within same day ──
   document.querySelectorAll('.itin-item').forEach(function(el) {
     el.addEventListener('dragstart', function(e) {
-      dragSrc = {date:el.dataset.date, idx:parseInt(el.dataset.idx)};
+      dragSrc = {date:el.dataset.date, idx:parseInt(el.dataset.idx), fromUnscheduled:false};
       setTimeout(function(){el.classList.add('dragging');},0);
       e.dataTransfer.effectAllowed = 'move';
     });
-    el.addEventListener('dragend', function() {
-      document.querySelectorAll('.itin-item').forEach(function(i){i.classList.remove('dragging','drag-over');});
-    });
+    el.addEventListener('dragend', clearDragHighlights);
     el.addEventListener('dragover', function(e) {
       e.preventDefault();
       document.querySelectorAll('.itin-item').forEach(function(i){i.classList.remove('drag-over');});
+      document.querySelectorAll('.day-items').forEach(function(i){i.classList.remove('drop-target');});
       el.classList.add('drag-over');
+      var card = el.closest('.day-card');
+      if (card) card.classList.add('drop-target');
     });
     el.addEventListener('drop', function(e) {
       e.preventDefault();
-      document.querySelectorAll('.itin-item').forEach(function(i){i.classList.remove('drag-over');});
+      clearDragHighlights();
       if (!dragSrc) return;
       var toDate = el.dataset.date, toIdx = parseInt(el.dataset.idx);
-      if (dragSrc.date!==toDate || dragSrc.idx===toIdx) return;
-      var arr = TRIP.itinerary[dragSrc.date];
-      var moved = arr.splice(dragSrc.idx,1)[0];
-      arr.splice(toIdx,0,moved);
+      if (dragSrc.fromUnscheduled) {
+        addUnscheduledToDay(dragSrc.placeId, toDate, toIdx);
+      } else {
+        if (dragSrc.date!==toDate || dragSrc.idx===toIdx) return;
+        var arr = TRIP.itinerary[dragSrc.date];
+        var moved = arr.splice(dragSrc.idx,1)[0];
+        arr.splice(toIdx,0,moved);
+        saveItinerary(); renderItinerary();
+      }
       dragSrc = null;
-      saveItinerary(); renderItinerary();
     });
+  });
+
+  // ── day-items containers: accept drops from unscheduled (appends at end) ──
+  document.querySelectorAll('.day-items').forEach(function(el) {
+    el.addEventListener('dragover', function(e) {
+      if (!dragSrc || !dragSrc.fromUnscheduled) return;
+      e.preventDefault();
+      el.classList.add('drop-target');
+      var card = el.closest('.day-card');
+      if (card) card.classList.add('drop-target');
+    });
+    el.addEventListener('dragleave', function() {
+      el.classList.remove('drop-target');
+      var card = el.closest('.day-card');
+      if (card) card.classList.remove('drop-target');
+    });
+    el.addEventListener('drop', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      clearDragHighlights();
+      if (!dragSrc || !dragSrc.fromUnscheduled) return;
+      var date = el.id.replace('dayitems-','');
+      addUnscheduledToDay(dragSrc.placeId, date, null);
+      dragSrc = null;
+    });
+  });
+
+  // ── unscheduled items: drag source ──
+  document.querySelectorAll('.unscheduled-item').forEach(function(el) {
+    el.addEventListener('dragstart', function(e) {
+      dragSrc = {fromUnscheduled:true, placeId:parseInt(el.dataset.placeId)};
+      setTimeout(function(){el.classList.add('dragging');},0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', clearDragHighlights);
   });
 }
 
