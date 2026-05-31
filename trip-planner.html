@@ -308,7 +308,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 .stars { color:var(--hotel); font-size:11px; }
 
 /* ── MODAL ── */
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:2000; display:none; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(4px); }
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:2000; display:none; align-items:center; justify-content:center; padding:20px; }
 .modal-overlay.show { display:flex; }
 .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:680px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.7); animation:modalIn 0.2s ease; }
 @keyframes modalIn { from{opacity:0;transform:scale(0.96) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);} }
@@ -533,8 +533,13 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
         </div>
       </div>
       <div>
-        <div class="nt-section-label">Where are you going?</div>
+        <div class="nt-section-label">Trip Name</div>
         <input class="nt-input" id="nt-title" placeholder="e.g. Nashville, June 2027" style="font-size:15px;padding:11px 13px">
+      </div>
+      <div>
+        <div class="nt-section-label">City / Destination</div>
+        <input class="nt-input" id="nt-location" placeholder="e.g. Nashville, TN" style="font-size:15px;padding:11px 13px">
+        <div id="nt-location-status" style="font-size:12px;color:var(--muted);margin-top:5px;min-height:16px"></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button class="nt-cancel-btn" onclick="closeNewTripModal()">Cancel</button>
@@ -748,11 +753,21 @@ function openTrip(trip) {
   document.getElementById('modal-title').textContent = (trip.emoji||'') + ' ' + trip.title;
   document.getElementById('modal-subtitle').textContent = (trip.travelers||'') + ' · ' + (trip.dates||'');
   showApp();
-  if(mapReady) { plotMarkers(); renderList(); buildModal(); attachFilterListeners(); attachPanelTabs(); renderItinerary(); }
-  else { window._pendingTrip = true; }
+  if(mapReady) {
+    console.log('[openTrip]', trip.title, 'mapCenter:', trip.mapCenter, 'places:', (trip.places||[]).length);
+    centerMapForTrip(trip);
+    plotMarkers(); renderList(); buildModal(); attachFilterListeners(); attachPanelTabs(); renderItinerary();
+  } else { window._pendingTrip = true; }
 }
 
 // ── MAP ──
+function centerMapForTrip(trip) {
+  if (!map || !trip) return;
+  // Places are handled by plotMarkers' fitBounds; only set a center when there are none.
+  if (trip.places && trip.places.length) return;
+  if (trip.mapCenter) { map.setCenter(trip.mapCenter); map.setZoom(13); }
+  else { map.setCenter({lat:29.952,lng:-90.068}); map.setZoom(4); }
+}
 window.initMap = function() {
   map = new google.maps.Map(document.getElementById('map'), {
     center:{lat:29.952,lng:-90.068}, zoom:14, styles:MAP_STYLES,
@@ -760,7 +775,10 @@ window.initMap = function() {
     zoomControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER}
   });
   mapReady = true;
-  if(window._pendingTrip && TRIP) { plotMarkers(); renderList(); buildModal(); attachFilterListeners(); attachPanelTabs(); renderItinerary(); }
+  if(window._pendingTrip && TRIP) {
+    centerMapForTrip(TRIP);
+    plotMarkers(); renderList(); buildModal(); attachFilterListeners(); attachPanelTabs(); renderItinerary();
+  }
 };
 
 function makeNumberedIcon(num, type) {
@@ -1330,9 +1348,29 @@ window.createTrip = async function() {
   if (!title) { document.getElementById('nt-title').style.borderColor='#e85c4a'; document.getElementById('nt-title').focus(); return; }
   var btn = document.getElementById('nt-create-btn');
   btn.disabled=true; btn.textContent='Creating…';
+  var mapCenter = null;
+  var locationVal = (document.getElementById('nt-location').value||'').trim();
+  var statusEl = document.getElementById('nt-location-status');
+  if (locationVal) {
+    statusEl.style.color='var(--muted)'; statusEl.textContent='Finding location…';
+    try {
+      var {Place} = await google.maps.importLibrary('places');
+      var {places} = await Place.searchByText({textQuery: locationVal, fields: ['location','displayName'], maxResultCount: 1});
+      if (places && places.length) {
+        mapCenter = {lat: places[0].location.lat(), lng: places[0].location.lng()};
+        statusEl.style.color='#5cb85c'; statusEl.textContent='📍 '+(places[0].displayName||locationVal);
+      } else {
+        statusEl.style.color='#e8b84b'; statusEl.textContent='Couldn’t find that location — trip will still be created.';
+      }
+    } catch(e) {
+      statusEl.style.color='#e8b84b'; statusEl.textContent='Location lookup failed: '+(e.message||e);
+    }
+  }
+  console.log('[createTrip] location:', locationVal, '→ mapCenter:', mapCenter);
   var newTrip = {
     title: title, emoji: selectedEmoji, travelers: 'Chad & Brooke Lown', dates: '',
-    header_subtitle: title, hotel: {}, flights: [], payment: {}, reservations: [], places: [], itinerary: {}
+    header_subtitle: title, hotel: {}, flights: [], payment: {}, reservations: [], places: [], itinerary: {},
+    ...(mapCenter ? {mapCenter} : {})
   };
   try {
     var docRef = await addDoc(collection(db,'trips'), newTrip);
@@ -1372,6 +1410,7 @@ window.openFindModal = function() {
 };
 window.closeFindModal = function() {
   document.getElementById('find-modal-overlay').classList.remove('show');
+  if (typeof map !== 'undefined' && map) google.maps.event.trigger(map, 'resize');
 };
 document.getElementById('find-modal-overlay').addEventListener('click', function(e){ if(e.target===this) closeFindModal(); });
 
@@ -1398,9 +1437,10 @@ window.doPlacesSearch = async function() {
   btn.disabled=true; btn.textContent='Searching…';
   document.getElementById('search-results').innerHTML='<div class="search-empty">Searching…</div>';
   var hotelPlace = (TRIP.places||[]).find(function(p){return p.type==='hotel';});
-  var center = hotelPlace ? {lat:hotelPlace.lat,lng:hotelPlace.lng} : {lat:29.95,lng:-90.07};
+  var center = hotelPlace ? {lat:hotelPlace.lat,lng:hotelPlace.lng} : (TRIP.mapCenter || {lat:29.95,lng:-90.07});
   try {
-    var {places} = await google.maps.places.Place.searchByText({
+    var {Place} = await google.maps.importLibrary('places');
+    var {places} = await Place.searchByText({
       textQuery: q,
       fields: ['displayName','formattedAddress','location','types','rating','id'],
       locationBias: {center: center, radius: 10000},
