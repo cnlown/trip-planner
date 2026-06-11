@@ -404,6 +404,25 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 .res-card-row { display:flex; gap:10px; font-size:11px; }
 .res-card-label { color:var(--muted); width:80px; flex-shrink:0; }
 .res-card-value { color:var(--text); }
+
+/* ── TRIP COUNTDOWN ── */
+.tc-countdown { font-size:10px; color:var(--hotel); margin-top:5px; font-weight:600; letter-spacing:0.04em; }
+
+/* ── WALK TIMES ── */
+.itin-walk { font-size:9.5px; color:var(--muted); padding:1px 0 1px 27px; opacity:0.75; user-select:none; }
+
+/* ── PACKING LIST ── */
+.pack-add-row { display:flex; gap:8px; margin-bottom:12px; }
+.pack-progress { font-size:11px; color:var(--muted); margin:0 2px 10px; }
+.pack-bar { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin:6px 0 12px; }
+.pack-bar-fill { height:100%; background:var(--hotel); border-radius:3px; transition:width 0.3s ease; }
+.pack-item { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; background:rgba(255,255,255,0.02); transition:border-color 0.15s; }
+.pack-item:hover { border-color:rgba(232,184,75,0.25); }
+.pack-item label { display:flex; align-items:center; gap:10px; cursor:pointer; flex:1; font-size:13px; color:var(--text); min-width:0; }
+.pack-item input[type=checkbox] { accent-color:var(--hotel); width:15px; height:15px; flex-shrink:0; cursor:pointer; }
+.pack-item.done label span { text-decoration:line-through; color:var(--muted); }
+.pack-item .res-delete-btn { opacity:0.35; }
+.pack-item:hover .res-delete-btn { opacity:0.7; }
 </style>
 </head>
 <body>
@@ -451,6 +470,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
   <div class="header-right">
     <button class="header-btn gold" onclick="openFindModal()">🔍 Find Places</button>
     <button class="header-btn gold" onclick="openModal()">✈️ Trip Details</button>
+    <button class="header-btn ghost" onclick="printItinerary()"><span>🖨 Print</span></button>
     <button class="header-btn ghost" onclick="showTripSelector()">↩ Trips</button>
     <div class="filters" id="filters">
       <button class="filter-btn active" data-type="all">All</button>
@@ -538,6 +558,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       <button class="modal-tab" data-tab="hotel">🏨 Hotel</button>
       <button class="modal-tab" data-tab="payment">💳 Payment</button>
       <button class="modal-tab" data-tab="reservations">📋 Reservations</button>
+      <button class="modal-tab" data-tab="packing">🎒 Packing</button>
       <button class="modal-tab" data-tab="weather">🌤️ Weather</button>
     </div>
     <div class="modal-body">
@@ -545,6 +566,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       <div class="tab-panel" id="tab-hotel"></div>
       <div class="tab-panel" id="tab-payment"></div>
       <div class="tab-panel" id="tab-reservations"></div>
+      <div class="tab-panel" id="tab-packing"></div>
       <div class="tab-panel" id="tab-weather"></div>
     </div>
   </div>
@@ -680,7 +702,7 @@ const provider = new GoogleAuthProvider();
 var TRIP = null;
 var currentUser = null;
 var map, markers = {}, activeFilter = 'all', activePlace = null, activeDay = null, mapReady = false;
-var dragSrc = null, tsPicker = null, notePicker = null, pendingDeleteId = null;
+var dragSrc = null, tsPicker = null, notePicker = null, pendingDeleteId = null, dayRoute = null;
 var searchAcTimer = null, searchAcToken = null, searchAcCache = [], searchAcDd = null;
 var placePhotoCache = {};
 
@@ -783,9 +805,11 @@ function renderTripSelector(user, trips) {
     const card = document.createElement('div');
     card.className = 'trip-card' + (trip.archived ? ' archived-card' : '');
     card.dataset.tripId = trip.id;
+    var cd = trip.archived ? null : tripCountdownInfo(trip);
     card.innerHTML = '<div class="tc-emoji">'+(trip.emoji||'🗺️')+'</div>'
       +'<div class="tc-title">'+trip.title+'</div>'
       +'<div class="tc-dates">'+(trip.archived ? '📦 Archived' : (trip.dates||''))+'</div>'
+      +(cd && cd.text ? '<div class="tc-countdown">'+(cd.phase==='before'?'✈️ ':'🎉 ')+cd.text+'</div>' : '')
       +'<button class="trip-card-archive" onclick="event.stopPropagation();toggleArchiveTrip(\''+trip.id+'\','+!!trip.archived+')" title="'+(trip.archived?'Unarchive':'Archive')+'">'
       +(trip.archived ? '↩' : '📦')+'</button>'
       +(trip.archived ? '<button class="trip-card-delete" onclick="event.stopPropagation();promptDeleteTrip(\''+trip.id+'\')" title="Delete permanently">🗑</button>' : '');
@@ -827,7 +851,9 @@ function openTrip(trip) {
   document.querySelector('.filter-btn[data-type="all"]').classList.add('active');
   document.title = trip.title + ' — Trip Planner';
   document.getElementById('header-title').textContent = (trip.emoji||'') + ' ' + trip.title;
-  document.getElementById('header-subtitle').textContent = trip.header_subtitle || (trip.dates + ' · ' + trip.travelers);
+  var cd = tripCountdownInfo(trip);
+  document.getElementById('header-subtitle').textContent = (trip.header_subtitle || (trip.dates + ' · ' + trip.travelers))
+    + (cd && cd.text ? ' · ' + cd.text : '');
   document.getElementById('modal-title').textContent = (trip.emoji||'') + ' ' + trip.title;
   document.getElementById('modal-subtitle').textContent = (trip.travelers||'') + ' · ' + (trip.dates||'');
   showApp();
@@ -878,7 +904,30 @@ function makeIcon(type, active) {
   return {url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(s,s),anchor:new google.maps.Point(r,r)};
 }
 
+// ── DAY ROUTE LINE ──
+function clearDayRoute() {
+  if (dayRoute) { dayRoute.setMap(null); dayRoute = null; }
+}
+
+function drawDayRoute(date) {
+  clearDayRoute();
+  if (!map) return;
+  var items = ((TRIP.itinerary||{})[date]||[]);
+  var pts = items.map(function(i){
+    var p = (TRIP.places||[]).find(function(pp){return pp.id===i.placeId;});
+    return p ? {lat:p.lat, lng:p.lng} : null;
+  }).filter(Boolean);
+  if (pts.length < 2) return;
+  dayRoute = new google.maps.Polyline({
+    path: pts, map: map,
+    strokeOpacity: 0,
+    icons: [{icon:{path:'M 0,-1 0,1', strokeOpacity:0.75, strokeWeight:2.5, strokeColor:'#e8b84b'}, offset:'0', repeat:'14px'}],
+    zIndex: 50
+  });
+}
+
 function plotMarkers() {
+  clearDayRoute();
   Object.values(markers).forEach(m=>m.setMap(null));
   markers={};
   (TRIP.places||[]).forEach(p => {
@@ -997,6 +1046,7 @@ function attachFilterListeners() {
   document.querySelectorAll('.filter-btn').forEach(btn=>{
     btn.onclick=function(){
       activeDay=null;
+      clearDayRoute();
       document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       activeFilter=btn.getAttribute('data-type');
@@ -1008,7 +1058,7 @@ function attachFilterListeners() {
 
 // ── MODAL ──
 function buildModal() {
-  buildFlightsTab(); buildHotelTab(); buildPaymentTab(); buildReservationsTab(); buildWeatherTab();
+  buildFlightsTab(); buildHotelTab(); buildPaymentTab(); buildReservationsTab(); buildPackingTab(); buildWeatherTab();
 }
 
 function buildFlightsTab() {
@@ -1145,11 +1195,80 @@ async function saveReservations() {
   catch(e) { console.error('saveReservations:',e); }
 }
 
+// ── PACKING LIST ──
+var PACK_SUGGESTIONS = ['Phone chargers','Medications','Sunscreen','Comfortable walking shoes','Portable battery','Travel documents / ID','Umbrella','Sunglasses'];
+
+function buildPackingTab() {
+  var el = document.getElementById('tab-packing');
+  if (!el) return;
+  var items = TRIP.packing || [];
+  var done = items.filter(function(i){return i.done;}).length;
+  var pct = items.length ? Math.round(done/items.length*100) : 0;
+  var suggestions = PACK_SUGGESTIONS.filter(function(s){
+    return !items.some(function(i){return i.text.toLowerCase()===s.toLowerCase();});
+  }).slice(0,4);
+  el.innerHTML =
+    '<div class="pack-add-row"><input class="res-input" id="pack-input" placeholder="Add an item… (e.g. sunscreen)"><button class="res-save-btn" style="flex:0 0 auto;padding:8px 18px" onclick="addPackItem()">Add</button></div>'
+    +(items.length
+      ? '<div class="pack-progress">'+done+' of '+items.length+' packed'+(pct===100?' — all set! 🎉':'')+'</div>'
+        +'<div class="pack-bar"><div class="pack-bar-fill" style="width:'+pct+'%"></div></div>'
+        +items.map(function(it,idx){
+          return '<div class="pack-item'+(it.done?' done':'')+'">'
+            +'<label><input type="checkbox" '+(it.done?'checked':'')+' onchange="togglePackItem('+idx+')"><span>'+esc(it.text)+'</span></label>'
+            +'<button class="res-delete-btn" style="opacity:0.35" onclick="deletePackItem('+idx+')" title="Remove">✕</button>'
+            +'</div>';
+        }).join('')
+      : '<div class="empty-res"><div class="empty-icon">🎒</div>Nothing on the packing list yet.</div>')
+    +(suggestions.length
+      ? '<div style="margin-top:14px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Quick add</div>'
+        +suggestions.map(function(s){
+          return '<button class="archived-toggle" style="margin:0 6px 6px 0" onclick="addPackItemText(\''+s.replace(/'/g,"\\'")+'\')">＋ '+s+'</button>';
+        }).join('')+'</div>'
+      : '');
+  var inp = document.getElementById('pack-input');
+  if (inp) inp.addEventListener('keydown', function(e){ if(e.key==='Enter') addPackItem(); });
+}
+
+window.addPackItem = function() {
+  var inp = document.getElementById('pack-input');
+  var t = (inp && inp.value || '').trim();
+  if (!t) return;
+  addPackItemText(t);
+};
+
+window.addPackItemText = function(text) {
+  if (!TRIP.packing) TRIP.packing = [];
+  TRIP.packing.push({text:text, done:false});
+  savePacking(); buildPackingTab();
+  var inp = document.getElementById('pack-input');
+  if (inp) inp.focus();
+};
+
+window.togglePackItem = function(idx) {
+  if (!TRIP.packing || !TRIP.packing[idx]) return;
+  TRIP.packing[idx].done = !TRIP.packing[idx].done;
+  savePacking(); buildPackingTab();
+};
+
+window.deletePackItem = function(idx) {
+  if (!TRIP.packing) return;
+  TRIP.packing.splice(idx,1);
+  savePacking(); buildPackingTab();
+};
+
+async function savePacking() {
+  if (!TRIP||!TRIP.id) return;
+  try { await updateDoc(doc(db,'trips',TRIP.id),{packing:TRIP.packing}); }
+  catch(e) { console.error('savePacking:',e); }
+}
+
 // ── ITINERARY ──
-function getTripDays() {
-  if (TRIP.activity_dates) return TRIP.activity_dates;
-  if (!TRIP.hotel) return [];
-  var yearMatch = (TRIP.dates||'').match(/\d{4}/);
+function getTripDays(t) {
+  t = t || TRIP;
+  if (!t) return [];
+  if (t.activity_dates) return t.activity_dates;
+  if (!t.hotel) return [];
+  var yearMatch = (t.dates||'').match(/\d{4}/);
   if (!yearMatch) return [];
   var year = yearMatch[0];
   var MONTHS = {January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
@@ -1160,8 +1279,8 @@ function getTripDays() {
     }
     return null;
   }
-  var start = extractDate(TRIP.hotel.checkin);
-  var endStr = extractDate(TRIP.hotel.checkout);
+  var start = extractDate(t.hotel.checkin);
+  var endStr = extractDate(t.hotel.checkout);
   if (!start || !endStr) return [];
   var days = [], cur = new Date(start+'T12:00:00Z'), end = new Date(endStr+'T12:00:00Z');
   end.setUTCDate(end.getUTCDate()-1);
@@ -1169,10 +1288,34 @@ function getTripDays() {
   return days;
 }
 
+// ── TRIP COUNTDOWN ──
+function tripCountdownInfo(t) {
+  var days = getTripDays(t);
+  if (!days.length) return null;
+  var today = new Date(); today.setHours(0,0,0,0);
+  var start = new Date(days[0]+'T00:00:00');
+  var end = new Date(days[days.length-1]+'T00:00:00');
+  var until = Math.round((start - today) / 86400000);
+  if (until > 0) return {phase:'before', text: until===1 ? 'Tomorrow!' : 'In '+until+' days'};
+  if (today <= end) return {phase:'during', text: 'Day '+(Math.round((today-start)/86400000)+1)+' of '+days.length+' — have fun!'};
+  return {phase:'after', text: ''};
+}
+
 function formatDayLabel(d) { return new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'}); }
 function formatDayShort(d) { return new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}); }
 
 var TS_LABELS = {morning:'🌅 Morning', afternoon:'☀️ Afternoon', evening:'🌆 Evening'};
+
+// Straight-line distance with a street factor; rough walk/drive estimate between stops
+function walkBetween(p1, p2) {
+  var toRad = function(x){ return x*Math.PI/180; };
+  var dLat = toRad(p2.lat-p1.lat), dLng = toRad(p2.lng-p1.lng);
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(p1.lat))*Math.cos(toRad(p2.lat))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  var mi = 2 * 3958.8 * Math.asin(Math.sqrt(a)) * 1.3; // ×1.3 street routing factor
+  if (mi > 1.5) return '🚗 ' + mi.toFixed(1) + ' mi · ~' + Math.max(3, Math.round(mi/18*60)) + ' min drive';
+  var min = Math.max(1, Math.round(mi/3*60));
+  return '🚶 ' + (mi < 0.05 ? 'next door' : mi.toFixed(1) + ' mi · ~' + min + ' min walk');
+}
 
 function renderItinItem(item, date, idx) {
   var place = (TRIP.places||[]).find(function(p){return p.id===item.placeId;});
@@ -1211,12 +1354,21 @@ function renderItinerary() {
       +'<span class="day-count">'+items.length+' stop'+(items.length!==1?'s':'')+'</span>'
       +'</div>'
       +'<div class="day-items" id="dayitems-'+date+'">'
-      +(items.length ? items.map(function(item,idx){return renderItinItem(item,date,idx);}).join('') : '<div class="day-empty">No stops yet — click a place on the map.</div>')
+      +(items.length ? items.map(function(item,idx){
+          var html = renderItinItem(item,date,idx);
+          if (idx < items.length-1) {
+            var p1 = (TRIP.places||[]).find(function(p){return p.id===item.placeId;});
+            var p2 = (TRIP.places||[]).find(function(p){return p.id===items[idx+1].placeId;});
+            if (p1 && p2) html += '<div class="itin-walk">↓ '+walkBetween(p1,p2)+'</div>';
+          }
+          return html;
+        }).join('') : '<div class="day-empty">No stops yet — click a place on the map.</div>')
       +'</div>'
       +'</div>';
   }).join('')
   + (unscheduled.length ? renderUnscheduled(unscheduled) : '');
   attachDragHandlers();
+  if (activeDay && mapReady) drawDayRoute(activeDay);
 }
 
 function renderUnscheduled(places) {
@@ -1345,6 +1497,7 @@ function attachPanelTabs() {
 window.toggleDay = function(date) {
   if (activeDay===date) {
     activeDay=null;
+    clearDayRoute();
     (TRIP.places||[]).forEach(function(p){
       if(!markers[p.id]) return;
       markers[p.id].setVisible(activeFilter==='all'||p.type===activeFilter);
@@ -1355,6 +1508,7 @@ window.toggleDay = function(date) {
     activeDay=date;
     var dayItems=((TRIP.itinerary||{})[date]||[]);
     var dayIds=new Set(dayItems.map(function(i){return i.placeId;}));
+    var bounds=new google.maps.LatLngBounds(), boundsCount=0;
     (TRIP.places||[]).forEach(function(p){
       if(!markers[p.id]) return;
       var vis=dayIds.has(p.id);
@@ -1363,8 +1517,12 @@ window.toggleDay = function(date) {
         var idx=dayItems.findIndex(function(i){return i.placeId===p.id;});
         markers[p.id].setIcon(makeNumberedIcon(idx+1, p.type));
         markers[p.id].setZIndex(1000-idx);
+        bounds.extend({lat:p.lat,lng:p.lng}); boundsCount++;
       }
     });
+    drawDayRoute(date);
+    if (boundsCount > 1) map.fitBounds(bounds, 80);
+    else if (boundsCount === 1) map.panTo(bounds.getCenter());
   }
   closePopup(); renderItinerary();
 };
@@ -1416,6 +1574,7 @@ window.removeFromDay = function(date, idx) {
   if (activeDay===date) {
     var dayIds=new Set((TRIP.itinerary[date]||[]).map(function(i){return i.placeId;}));
     (TRIP.places||[]).forEach(function(p){ if(markers[p.id]) markers[p.id].setVisible(dayIds.has(p.id)); });
+    drawDayRoute(date);
   }
 };
 
@@ -2089,6 +2248,83 @@ document.querySelectorAll('.modal-tab').forEach(tab=>{
 window.openModal=function(){document.getElementById('modal-overlay').classList.add('show');};
 window.closeModal=function(){document.getElementById('modal-overlay').classList.remove('show');};
 document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// ── ESCAPE KEY ──
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  closeTsPicker(); closeNotePicker();
+  closeFindModal(); closeModal(); closeNewTripModal();
+  if (TRIP && document.getElementById('detail-popup').classList.contains('show')) closePopup();
+});
+
+// ── PRINT ITINERARY ──
+window.printItinerary = function() {
+  if (!TRIP) return;
+  var days = getTripDays();
+  var itin = TRIP.itinerary || {};
+  var css = 'body{font-family:Georgia,serif;color:#222;max-width:720px;margin:24px auto;padding:0 20px;line-height:1.5}'
+    +'h1{font-size:26px;margin-bottom:2px} .sub{color:#777;font-size:13px;margin-bottom:22px}'
+    +'h2{font-size:15px;border-bottom:2px solid #222;padding-bottom:4px;margin:26px 0 10px;text-transform:uppercase;letter-spacing:0.05em}'
+    +'.stop{margin:0 0 10px 0;padding-left:10px;border-left:3px solid #c9a227}'
+    +'.stop b{font-size:14px} .meta{color:#666;font-size:12px} .walk{color:#999;font-size:11px;font-style:italic;margin:2px 0 8px 13px}'
+    +'.flight{margin-bottom:8px;font-size:13px} .res{margin-bottom:10px;font-size:13px}'
+    +'.empty{color:#999;font-style:italic;font-size:12px}'
+    +'@media print{body{margin:0 auto}}';
+  var h = '<h1>'+esc(TRIP.title)+'</h1><div class="sub">'+esc(TRIP.dates||'')+' · '+esc(TRIP.travelers||'')+'</div>';
+
+  if ((TRIP.flights||[]).length) {
+    h += '<h2>✈ Flights</h2>';
+    TRIP.flights.forEach(function(al){
+      h += '<div class="flight"><b>'+esc(al.airline)+'</b>'+(al.confirmation?' — Conf. '+esc(al.confirmation):'')+'</div>';
+      (al.legs||[]).forEach(function(l){
+        h += '<div class="flight">'+(l.day?'<span class="meta">'+esc(l.day)+'</span><br>':'')
+          +esc(l.flight)+': '+esc(l.from)+' → '+esc(l.to)+' · departs '+esc(l.departs)+', arrives '+esc(l.arrives)+'</div>';
+      });
+    });
+  }
+  if (TRIP.hotel && TRIP.hotel.name) {
+    h += '<h2>🏨 Hotel</h2><div class="flight"><b>'+esc(TRIP.hotel.name)+'</b><br>'
+      +'<span class="meta">'+esc(TRIP.hotel.address||'')+(TRIP.hotel.confirmation?' · Conf. '+esc(TRIP.hotel.confirmation):'')+'</span><br>'
+      +'<span class="meta">'+esc(TRIP.hotel.checkin||'')+' → '+esc(TRIP.hotel.checkout||'')+'</span></div>';
+  }
+
+  h += '<h2>🗓 Day-by-Day Itinerary</h2>';
+  if (!days.length) h += '<div class="empty">No trip days found.</div>';
+  days.forEach(function(date){
+    var items = itin[date]||[];
+    h += '<h2 style="border-bottom:1px solid #bbb;font-size:14px">'+formatDayLabel(date)+'</h2>';
+    if (!items.length) { h += '<div class="empty">Free day — nothing scheduled.</div>'; return; }
+    items.forEach(function(item, idx){
+      var p = (TRIP.places||[]).find(function(pp){return pp.id===item.placeId;});
+      if (!p) return;
+      var ts = item.customTime || (item.timeSlot ? (TS_LABELS[item.timeSlot]||item.timeSlot).replace(/^\S+\s/,'') : '');
+      h += '<div class="stop"><b>'+(idx+1)+'. '+esc(p.name)+'</b>'+(ts?' <span class="meta">— '+esc(ts)+'</span>':'')
+        +'<br><span class="meta">'+esc(p.address||'')+'</span>'
+        +(item.note?'<br><span class="meta">📝 '+esc(item.note)+'</span>':'')
+        +'</div>';
+      if (idx < items.length-1) {
+        var p2 = (TRIP.places||[]).find(function(pp){return pp.id===items[idx+1].placeId;});
+        if (p2) h += '<div class="walk">↓ '+walkBetween(p, p2)+'</div>';
+      }
+    });
+  });
+
+  if ((TRIP.reservations||[]).length) {
+    h += '<h2>📋 Reservations</h2>';
+    TRIP.reservations.forEach(function(r){
+      h += '<div class="res"><b>'+esc(r.name)+'</b> <span class="meta">('+esc(r.type||'')+')</span><br>'
+        +'<span class="meta">'+[r.date, r.time, r.party, r.confirmation?'Conf. '+r.confirmation:''].filter(Boolean).map(esc).join(' · ')+'</span>'
+        +(r.notes?'<br><span class="meta">'+esc(r.notes)+'</span>':'')+'</div>';
+    });
+  }
+
+  var w = window.open('', '_blank');
+  if (!w) { alert('Please allow pop-ups to print the itinerary.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><title>'+esc(TRIP.title)+' — Itinerary</title><style>'+css+'</style></head><body>'+h+'</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 300);
+};
 
 </script>
 
