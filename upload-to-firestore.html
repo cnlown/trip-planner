@@ -23,12 +23,18 @@ button:disabled { background: #444; color: #888; cursor: not-allowed; }
 <button id="upload-btn" onclick="doUpload()" disabled style="margin-left:12px">Upload NOLA Trip</button>
 <button id="test-btn" onclick="doUploadTest()" disabled style="margin-left:12px;background:#5cb8e8">Upload Test Trip</button>
 <button id="sync-btn" onclick="doSyncNola()" disabled style="margin-left:12px;background:#5ce87a;margin-top:12px;display:block">Sync NOLA Places (add missing)</button>
+<button id="restore-btn" onclick="doRestoreNola()" disabled style="margin-left:12px;background:#e85c4a;margin-top:8px;display:block">Restore ALL NOLA Data (flights, hotel, payment)</button>
+<div style="margin-top:16px;padding-top:16px;border-top:1px solid #2e2b25">
+  <p style="margin-bottom:8px">Update Anthropic API key stored in Firestore:</p>
+  <input id="new-key-input" type="password" placeholder="sk-ant-…" style="background:#1a1814;border:1px solid #2e2b25;color:#f0ead8;font-family:monospace;font-size:13px;padding:8px 12px;border-radius:6px;width:340px;outline:none">
+  <button id="key-btn" onclick="doUpdateKey()" disabled style="margin-left:8px;background:#9b7fe8">Update Key</button>
+</div>
 <div id="log">Waiting...</div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBkuYcZWb36RJVWI0pl13wJuC3yflCFjEY",
@@ -178,6 +184,8 @@ onAuthStateChanged(auth, user => {
     document.getElementById('upload-btn').disabled = false;
     document.getElementById('test-btn').disabled = false;
     document.getElementById('sync-btn').disabled = false;
+    document.getElementById('key-btn').disabled = false;
+    document.getElementById('restore-btn').disabled = false;
     document.getElementById('log').textContent = '';
     log('Signed in as ' + user.email + '. Ready to upload.', 'ok');
   }
@@ -202,6 +210,78 @@ const NOLA_PLACES_FULL = [
     { id:16, name:"Royal Street Shopping",            type:"shopping",   lat:29.9546727, lng:-90.0680313, address:"Royal St, French Quarter",              notes:"25+ antique shops and art galleries. Highlights: M.S. Rau (rare antiques and jewelry), Lucullus (culinary antiques), Keil's Antiques (est. 1899). Best visited early morning before crowds.", rating:4.4, must:false },
     { id:17, name:"Brennan's",                        type:"restaurant", lat:29.9568,    lng:-90.0637,    address:"417 Royal St, French Quarter",          notes:"MUST EAT — New Orleans institution since 1946. Famous for Bananas Foster (invented here), turtle soup, and decadent Creole brunch. Go for brunch or dinner. Dress smart-casual.", rating:4.5, must:true  }
 ];
+
+window.doUpdateKey = async function() {
+  const key = document.getElementById('new-key-input').value.trim();
+  if (!key.startsWith('sk-')) { log('Key must start with sk-', 'err'); return; }
+  const btn = document.getElementById('key-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  document.getElementById('log').textContent = '';
+  try {
+    await setDoc(doc(db, 'config', 'app'), { anthropicKey: key }, { merge: true });
+    log('✓ API key updated in Firestore.', 'ok');
+    log('You can now close this page and use Ask Claude in the app.', 'ok');
+    btn.textContent = '✓ Done';
+  } catch(e) {
+    log('Failed: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Update Key';
+  }
+};
+
+const NOLA_CORE = {
+  title: "New Orleans, December 2026",
+  emoji: "🎷",
+  travelers: "Chad & Brooke Lown",
+  dates: "Dec 26–31, 2026",
+  header_subtitle: "December 26–30, 2026 · Le Méridien, CBD",
+  flights: [
+    {
+      airline: "United Airlines", confirmation: "LMILMM", checkin_url: "united.com",
+      legs: [
+        { day: "Saturday, December 26 — Outbound", flight: "United 1796",  from: "ROC", to: "EWR", departs: "6:40 AM",  arrives: "7:57 AM"  },
+        { day: "",                                  flight: "United 1527",  from: "EWR", to: "MSY", departs: "9:45 AM",  arrives: "12:10 PM" },
+        { day: "Thursday, December 31 — Return",   flight: "United 2844",  from: "MSY", to: "ORD", departs: "7:00 AM",  arrives: "9:45 AM"  },
+        { day: "",                                  flight: "SkyWest 5335", from: "ORD", to: "ROC", departs: "10:35 AM", arrives: "1:28 PM"  }
+      ],
+      notes: [
+        { label: "Check In",    value: "united.com", conf: "LMILMM" },
+        { label: "Dec 31 Note", value: "Wake up 4:00–4:30 AM · Leave hotel by 5:00 AM", warn: true }
+      ]
+    }
+  ],
+  hotel: {
+    name: "Le Méridien New Orleans", address: "333 Poydras Street, New Orleans, LA",
+    phone: "(504) 525-9444", confirmation: "255-14453543",
+    checkin: "Saturday, December 26 at 4:00 PM", checkout: "Thursday, December 31 at 11:00 AM",
+    room: "Classic, Double Two Queen Beds · 2 adults",
+    note: "Must leave hotel by 4:30–5:00 AM for 7:00 AM flight"
+  },
+  payment: {
+    vendor: "JetBlue Vacations", total: "$2,544.22", remaining: "$2,296.22",
+    due_date: "November 26, 2026",
+    warning: "Must be paid manually at JetBlue Vacations. Booking will be CANCELLED and deposit forfeited if not paid on time. Calendar reminders set for 1 week and 1 day before."
+  }
+};
+
+window.doRestoreNola = async function() {
+  const btn = document.getElementById('restore-btn');
+  btn.disabled = true; btn.textContent = 'Restoring…';
+  document.getElementById('log').textContent = '';
+  try {
+    log('Finding NOLA trip…', 'info');
+    const snap = await getDocs(collection(db, 'trips'));
+    let nolaId = null;
+    snap.forEach(d => { if (d.data().title === 'New Orleans, December 2026') nolaId = d.id; });
+    if (!nolaId) { log('NOLA trip not found.', 'err'); btn.textContent = 'Not Found'; return; }
+    log('Restoring flights, hotel, payment, places…', 'info');
+    await updateDoc(doc(db, 'trips', nolaId), { ...NOLA_CORE, places: NOLA_PLACES_FULL });
+    log('✓ All NOLA data restored (' + NOLA_PLACES_FULL.length + ' places + flights, hotel, payment).', 'ok');
+    btn.textContent = '✓ Done';
+  } catch(e) {
+    log('Failed: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Retry';
+  }
+};
 
 window.doSyncNola = async function() {
   const btn = document.getElementById('sync-btn');
