@@ -412,6 +412,12 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
 .itin-walk { font-size:9.5px; color:var(--muted); padding:1px 0 1px 27px; opacity:0.75; user-select:none; }
 
 /* ── PACKING LIST ── */
+/* ── BUDGET ── */
+.budget-tiles { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; }
+.budget-tile { border:1px solid var(--border); border-radius:8px; padding:10px 12px; background:rgba(255,255,255,0.02); text-align:center; }
+.bt-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
+.bt-value { font-size:17px; font-weight:600; color:var(--text); font-family:'DM Sans',sans-serif; }
+
 .pack-add-row { display:flex; gap:8px; margin-bottom:12px; }
 .pack-progress { font-size:11px; color:var(--muted); margin:0 2px 10px; }
 .pack-bar { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin:6px 0 12px; }
@@ -557,6 +563,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       <button class="modal-tab active" data-tab="flights">✈️ Flights</button>
       <button class="modal-tab" data-tab="hotel">🏨 Hotel</button>
       <button class="modal-tab" data-tab="payment">💳 Payment</button>
+      <button class="modal-tab" data-tab="budget">💰 Budget</button>
       <button class="modal-tab" data-tab="reservations">📋 Reservations</button>
       <button class="modal-tab" data-tab="packing">🎒 Packing</button>
       <button class="modal-tab" data-tab="weather">🌤️ Weather</button>
@@ -565,6 +572,7 @@ header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex;
       <div class="tab-panel active" id="tab-flights"></div>
       <div class="tab-panel" id="tab-hotel"></div>
       <div class="tab-panel" id="tab-payment"></div>
+      <div class="tab-panel" id="tab-budget"></div>
       <div class="tab-panel" id="tab-reservations"></div>
       <div class="tab-panel" id="tab-packing"></div>
       <div class="tab-panel" id="tab-weather"></div>
@@ -1058,7 +1066,7 @@ function attachFilterListeners() {
 
 // ── MODAL ──
 function buildModal() {
-  buildFlightsTab(); buildHotelTab(); buildPaymentTab(); buildReservationsTab(); buildPackingTab(); buildWeatherTab();
+  buildFlightsTab(); buildHotelTab(); buildPaymentTab(); buildBudgetTab(); buildReservationsTab(); buildPackingTab(); buildWeatherTab();
 }
 
 function buildFlightsTab() {
@@ -1260,6 +1268,176 @@ async function savePacking() {
   if (!TRIP||!TRIP.id) return;
   try { await updateDoc(doc(db,'trips',TRIP.id),{packing:TRIP.packing}); }
   catch(e) { console.error('savePacking:',e); }
+}
+
+// ── BUDGET ──
+var BUDGET_CATS = [
+  {key:'flights',    label:'Flights',      emoji:'✈️'},
+  {key:'lodging',    label:'Lodging',      emoji:'🏨'},
+  {key:'food',       label:'Food & Drink', emoji:'🍽️'},
+  {key:'activities', label:'Activities',   emoji:'🎟️'},
+  {key:'transport',  label:'Transport',    emoji:'🚕'},
+  {key:'shopping',   label:'Shopping',     emoji:'🛍️'},
+  {key:'other',      label:'Other',        emoji:'📌'}
+];
+
+function fmtMoney(n) {
+  n = Number(n)||0;
+  return '$'+n.toLocaleString('en-US',{minimumFractionDigits:0, maximumFractionDigits:2});
+}
+
+function budgetCat(key) {
+  for (var i=0;i<BUDGET_CATS.length;i++) if (BUDGET_CATS[i].key===key) return BUDGET_CATS[i];
+  return BUDGET_CATS[BUDGET_CATS.length-1];
+}
+
+function buildBudgetTab() {
+  var el = document.getElementById('tab-budget');
+  if (!el) return;
+  var b = TRIP.budget || {planned:{}, expenses:[]};
+  var planned = b.planned || {};
+  var expenses = b.expenses || [];
+  var plannedTotal = 0, spentByCat = {}, spentTotal = 0;
+  BUDGET_CATS.forEach(function(c){ plannedTotal += Number(planned[c.key])||0; spentByCat[c.key]=0; });
+  expenses.forEach(function(ex){ var a=Number(ex.amount)||0; spentTotal+=a; spentByCat[ex.category]=(spentByCat[ex.category]||0)+a; });
+  var remaining = plannedTotal - spentTotal;
+
+  // Summary tiles
+  var html = '<div class="budget-tiles">'
+    +'<div class="budget-tile"><div class="bt-label">Budget</div><div class="bt-value">'+(plannedTotal?fmtMoney(plannedTotal):'—')+'</div></div>'
+    +'<div class="budget-tile"><div class="bt-label">Spent</div><div class="bt-value">'+fmtMoney(spentTotal)+'</div></div>'
+    +'<div class="budget-tile"><div class="bt-label">'+(remaining>=0?'Remaining':'Over Budget')+'</div><div class="bt-value" style="color:'+(plannedTotal? (remaining>=0?'#7bc47f':'#e85c4a') :'var(--muted)')+'">'+(plannedTotal?fmtMoney(Math.abs(remaining)):'—')+'</div></div>'
+    +'</div>';
+
+  // During the trip: daily burn
+  var cd = tripCountdownInfo(TRIP), days = getTripDays();
+  if (cd && cd.phase==='during' && spentTotal>0) {
+    var dayNum = Math.max(1, Math.round((new Date().setHours(0,0,0,0) - new Date(days[0]+'T00:00:00')) / 86400000) + 1);
+    html += '<div class="pack-progress" style="margin-bottom:12px">Day '+dayNum+' — averaging '+fmtMoney(spentTotal/dayNum)+'/day'
+      +(plannedTotal?' of a '+fmtMoney(plannedTotal/days.length)+'/day budget':'')+'</div>';
+  }
+
+  // Set-budget form
+  html += '<button class="res-add-btn" onclick="toggleBudgetPlanForm()">⚙ Set Category Budgets</button>'
+    +'<div class="res-add-form" id="budget-plan-form">';
+  BUDGET_CATS.forEach(function(c){
+    html += '<div class="res-form-row" style="align-items:center">'
+      +'<div style="flex:0 0 130px;font-size:12px;color:var(--text)">'+c.emoji+' '+c.label+'</div>'
+      +'<input class="res-input" type="number" min="0" step="1" id="bp-'+c.key+'" placeholder="0" value="'+(planned[c.key]||'')+'">'
+      +'</div>';
+  });
+  html += '<div class="res-form-btns"><button class="res-save-btn" onclick="saveBudgetPlan()">Save Budgets</button><button class="res-cancel-btn" onclick="toggleBudgetPlanForm()">Cancel</button></div></div>';
+
+  // Category bars
+  var barsHtml = BUDGET_CATS.map(function(c){
+    var p = Number(planned[c.key])||0, s = spentByCat[c.key]||0;
+    if (!p && !s) return '';
+    var pct = p ? Math.min(100, s/p*100) : (s>0?100:0);
+    var over = p && s>p;
+    return '<div style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">'
+      +'<span>'+c.emoji+' '+c.label+'</span>'
+      +'<span style="color:'+(over?'#e85c4a':'var(--muted)')+'">'+fmtMoney(s)+(p?' / '+fmtMoney(p):'')+(over?' — over!':'')+'</span></div>'
+      +'<div class="pack-bar" style="margin:0"><div class="pack-bar-fill" style="width:'+pct+'%'+(over?';background:#e85c4a':'')+'"></div></div>'
+      +'</div>';
+  }).join('');
+  if (barsHtml) html += '<div style="margin:4px 2px 16px">'+barsHtml+'</div>';
+
+  // Add-expense form
+  var dayOptions = '<option value="">Pre-trip / other</option>'+days.map(function(d){
+    return '<option value="'+d+'">'+formatDayShort(d)+'</option>';
+  }).join('');
+  html += '<button class="res-add-btn" onclick="toggleExpenseForm()">＋ Add Expense</button>'
+    +'<div class="res-add-form" id="expense-add-form">'
+    +'<div class="res-form-row"><input class="res-input" id="ef-desc" placeholder="What was it? (e.g. Dinner at Cochon)"><input class="res-input" id="ef-amount" type="number" min="0" step="0.01" placeholder="$ Amount" style="flex:0 0 110px"></div>'
+    +'<div class="res-form-row">'
+    +'<select class="res-input" id="ef-cat">'+BUDGET_CATS.map(function(c){return '<option value="'+c.key+'">'+c.emoji+' '+c.label+'</option>';}).join('')+'</select>'
+    +'<select class="res-input" id="ef-date">'+dayOptions+'</select>'
+    +'</div>'
+    +'<div class="res-form-btns"><button class="res-save-btn" onclick="saveExpense()">Save Expense</button><button class="res-cancel-btn" onclick="toggleExpenseForm()">Cancel</button></div>'
+    +'</div>';
+
+  // Expense list (newest first)
+  if (expenses.length) {
+    var idxd = expenses.map(function(ex,i){ return {ex:ex, i:i}; });
+    idxd.sort(function(a,b){ return (b.ex.date||'').localeCompare(a.ex.date||'') || b.i-a.i; });
+    html += idxd.map(function(w){
+      var ex = w.ex, c = budgetCat(ex.category);
+      return '<div class="pack-item">'
+        +'<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'
+        +'<span>'+c.emoji+'</span>'
+        +'<div style="min-width:0"><div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(ex.desc)+'</div>'
+        +'<div style="font-size:10px;color:var(--muted)">'+c.label+(ex.date?' · '+formatDayShort(ex.date):'')+'</div></div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:600;color:var(--text)">'+fmtMoney(ex.amount)+'</span>'
+        +'<button class="res-delete-btn" style="opacity:0.35" onclick="deleteExpense('+w.i+')" title="Remove">✕</button></div>'
+        +'</div>';
+    }).join('');
+  } else {
+    html += '<div class="empty-res"><div class="empty-icon">💰</div>No expenses logged yet.<br><span style="font-size:11px;margin-top:6px;display:block">Set category budgets, then log spending as you go.</span></div>';
+  }
+
+  el.innerHTML = html;
+  var amt = document.getElementById('ef-amount');
+  if (amt) amt.addEventListener('keydown', function(e){ if(e.key==='Enter') saveExpense(); });
+}
+
+window.toggleBudgetPlanForm = function() {
+  var f = document.getElementById('budget-plan-form');
+  if (f) f.classList.toggle('open');
+};
+
+window.saveBudgetPlan = function() {
+  if (!TRIP.budget) TRIP.budget = {planned:{}, expenses:[]};
+  if (!TRIP.budget.planned) TRIP.budget.planned = {};
+  BUDGET_CATS.forEach(function(c){
+    var v = parseFloat((document.getElementById('bp-'+c.key)||{}).value);
+    TRIP.budget.planned[c.key] = isNaN(v) ? 0 : v;
+  });
+  saveBudget(); buildBudgetTab();
+};
+
+window.toggleExpenseForm = function() {
+  var f = document.getElementById('expense-add-form');
+  if (!f) return;
+  var isOpen = f.classList.contains('open');
+  f.classList.toggle('open', !isOpen);
+  if (!isOpen) {
+    // Default the date to today when we're mid-trip
+    var days = getTripDays(), today = new Date().toISOString().split('T')[0];
+    var sel = document.getElementById('ef-date');
+    if (sel && days.indexOf(today) >= 0) sel.value = today;
+    var d = document.getElementById('ef-desc');
+    if (d) d.focus();
+  }
+};
+
+window.saveExpense = function() {
+  var desc = ((document.getElementById('ef-desc')||{}).value||'').trim();
+  var amount = parseFloat((document.getElementById('ef-amount')||{}).value);
+  if (!desc) { document.getElementById('ef-desc').style.borderColor='#e85c4a'; return; }
+  if (isNaN(amount) || amount < 0) { document.getElementById('ef-amount').style.borderColor='#e85c4a'; return; }
+  if (!TRIP.budget) TRIP.budget = {planned:{}, expenses:[]};
+  if (!TRIP.budget.expenses) TRIP.budget.expenses = [];
+  TRIP.budget.expenses.push({
+    desc: desc,
+    amount: amount,
+    category: (document.getElementById('ef-cat')||{}).value||'other',
+    date: (document.getElementById('ef-date')||{}).value||''
+  });
+  saveBudget(); buildBudgetTab();
+};
+
+window.deleteExpense = function(idx) {
+  if (!TRIP.budget || !TRIP.budget.expenses) return;
+  TRIP.budget.expenses.splice(idx,1);
+  saveBudget(); buildBudgetTab();
+};
+
+async function saveBudget() {
+  if (!TRIP||!TRIP.id) return;
+  try { await updateDoc(doc(db,'trips',TRIP.id),{budget:TRIP.budget}); }
+  catch(e) { console.error('saveBudget:',e); }
 }
 
 // ── ITINERARY ──
